@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tayseer-AgriSaT — لوحة المشرف (Host Panel)</title>
+    <meta name="description" content="لوحة تحكم المشرف — إدارة العملاء والموافقة على الطلبات" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap"
+        rel="stylesheet" />
+    <style>
+        /* Admin-specific overrides */
+        .module-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.25);
+        }
+
+        .module-tag.inactive {
+            background: rgba(255, 255, 255, 0.06);
+            color: #6b7280;
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .admin-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 24px;
+            transition: border-color 0.3s;
+        }
+
+        .admin-card:hover {
+            border-color: rgba(16, 185, 129, 0.25);
+        }
+
+        .user-row {
+            transition: background 0.2s;
+        }
+
+        .user-row:hover {
+            background: rgba(16, 185, 129, 0.04);
+        }
+
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 700;
+            font-family: 'Cairo', sans-serif;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .action-btn-green {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .action-btn-green:hover {
+            background: rgba(16, 185, 129, 0.25);
+        }
+
+        .action-btn-red {
+            background: rgba(239, 68, 68, 0.12);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.25);
+        }
+
+        .action-btn-red:hover {
+            background: rgba(239, 68, 68, 0.22);
+        }
+
+        .action-btn-blue {
+            background: rgba(59, 130, 246, 0.12);
+            color: #93c5fd;
+            border: 1px solid rgba(59, 130, 246, 0.25);
+        }
+
+        .action-btn-blue:hover {
+            background: rgba(59, 130, 246, 0.22);
+        }
+
+        .action-btn-gold {
+            background: rgba(245, 158, 11, 0.12);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.25);
+        }
+
+        .action-btn-gold:hover {
+            background: rgba(245, 158, 11, 0.22);
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.04);
+            color: #6b7280;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-align: right;
+            padding: 12px 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        td {
+            padding: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            vertical-align: middle;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Toast notification */
+        #toast {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #064e3b;
+            border: 1px solid #10b981;
+            color: #d1fae5;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 700;
+            z-index: 9999;
+            display: none;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            font-family: 'Cairo', sans-serif;
+        }
+    </style>
+</head>
+
+<body class="flex">
+
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar w-64 min-h-screen flex flex-col p-5 flex-shrink-0 hidden md:flex">
+
+        <!-- BRAND BLOCK -->
+        <!-- BRAND BLOCK -->
+                <!-- BRAND BLOCK -->
+        <div class="flex flex-col items-center justify-center text-center pb-6 mb-6 border-b border-white/10">
+            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Tayseer-AgriSaT" class="w-44 h-auto drop-shadow-md mb-2 object-contain" />
+        </div>
+
+        <!-- Admin Nav -->
+        <nav class="flex flex-col gap-1 flex-1">
+            <a class="nav-link active" href="/admin">🛡️ لوحة المشرف</a>
+            <a class="nav-link" href="/dashboard">🏡 الداشبورد الرئيسي</a>
+            <div class="border-t border-white/10 my-2"></div>
+            <a class="nav-link" href="/auth/logout" style="color:#f87171;">🚪 تسجيل الخروج</a>
+        </nav>
+
+        <div class="pt-4 border-t border-white/10">
+            <div class="admin-card py-3 px-4">
+                <p class="text-xs text-gray-400 mb-1">متصل كمشرف</p>
+                <p class="text-sm font-bold text-emerald-400">🛡️ Host Administrator</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ── MAIN CONTENT ── -->
+    <main class="flex-1 overflow-y-auto p-5 md:p-8 space-y-7">
+
+        <!-- Page Header -->
+        <div class="flex items-center justify-between flex-wrap gap-4">
+            <div>
+                <h2 class="text-2xl font-extrabold text-white flex items-center gap-3">
+                    🛡️ لوحة تحكم المشرف
+                    <span class="badge badge-admin" style="font-size:11px;">Host Panel</span>
+                </h2>
+                <p class="text-sm text-gray-400 mt-1">
+                    إدارة العملاء · الموافقة على الطلبات · التحكم في صلاحيات الوصول
+                </p>
+            </div>
+            <a href="/dashboard" class="action-btn action-btn-blue">🏡 الداشبورد الرئيسي</a>
+        </div>
+
+        <!-- ── STATS BAR ── -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {% set total = users|length %}
+            {% set pending_count = users|selectattr('pending_farm_name')|list|length %}
+            {% set admin_count = users|selectattr('is_admin')|list|length %}
+            {% set client_count = total - admin_count %}
+
+            <div class="stat-card">
+                <span class="stat-icon">👥</span>
+                <div>
+                    <div class="stat-value">{{ total }}</div>
+                    <div class="stat-label">إجمالي المستخدمين</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">🌱</span>
+                <div>
+                    <div class="stat-value" style="color:#4ade80;">{{ client_count }}</div>
+                    <div class="stat-label">عملاء (Client)</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">⏳</span>
+                <div>
+                    <div class="stat-value" style="color:#fbbf24;">{{ pending_count }}</div>
+                    <div class="stat-label">طلبات معلّقة</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <span class="stat-icon">🛡️</span>
+                <div>
+                    <div class="stat-value" style="color:#f87171;">{{ admin_count }}</div>
+                    <div class="stat-label">مشرفون (Host)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── PENDING REQUESTS HIGHLIGHT ── -->
+        {% set pending_users = users|selectattr('pending_farm_name')|list %}
+        {% if pending_users %}
+        <div class="admin-card" style="border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.05);">
+            <h3 class="text-md font-bold text-yellow-400 mb-3 flex items-center gap-2">
+                ⏳ طلبات تغيير أسماء المزارع — تحتاج موافقتك
+                <span class="badge badge-pending">{{ pending_users|length }} طلب</span>
+            </h3>
+            <div class="flex flex-wrap gap-3">
+                {% for u in pending_users %}
+                <div
+                    style="background:rgba(255,255,255,0.04); border:1px solid rgba(245,158,11,0.2); border-radius:10px; padding:12px 16px; min-width:200px;">
+                    <p class="text-sm font-bold text-white mb-1">{{ u.name }}</p>
+                    <p class="text-xs text-gray-400 mb-2">
+                        الحالي: <span class="text-gray-300">{{ u.farm_name or 'غير محدد' }}</span> →
+                        الجديد: <span class="text-yellow-300 font-bold">{{ u.pending_farm_name }}</span>
+                    </p>
+                    <div class="flex gap-2">
+                        <button onclick="approveName({{ u.id }})" class="action-btn action-btn-green"
+                            style="font-size:11px; padding:4px 10px;">✅ موافقة</button>
+                        <button onclick="rejectName({{ u.id }})" class="action-btn action-btn-red"
+                            style="font-size:11px; padding:4px 10px;">❌ رفض</button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ── ALL USERS TABLE ── -->
+        <div class="admin-card py-0 px-0" style="overflow:hidden;">
+            <div class="px-6 py-4 border-b border-white/08 flex items-center justify-between">
+                <h3 class="text-md font-bold text-white flex items-center gap-2">
+                    👥 جميع المستخدمين المسجّلين
+                </h3>
+                <span class="text-xs text-gray-500">{{ total }} مستخدم</span>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>المستخدم</th>
+                            <th>الهاتف</th>
+                            <th>اسم المزرعة</th>
+                            <th>طلب معلّق</th>
+                            <th>المحصول / المساحة</th>
+                            <th>الصلاحيات</th>
+                            <th>الإجراءات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr class="user-row">
+                            <td class="text-gray-500 text-xs">#{{ u.id }}</td>
+
+                            <td>
+                                <div class="flex flex-col gap-1">
+                                    <span class="font-bold text-white text-sm">{{ u.name }}</span>
+                                    <span class="text-xs text-gray-400">{{ u.email }}</span>
+                                    {% if u.is_admin %}
+                                    <span class="badge badge-admin" style="width:fit-content; font-size:9px;">🛡️
+                                        Host</span>
+                                    {% else %}
+                                    <span class="badge badge-healthy" style="width:fit-content; font-size:9px;">🌱
+                                        Client</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                            <td class="text-sm text-gray-300" dir="ltr">{{ u.phone or '—' }}</td>
+
+                            <td>
+                                {% if u.farm_name %}
+                                <span class="text-white font-semibold text-sm">{{ u.farm_name }}</span>
+                                <span class="text-xs text-green-400 block">✅ معتمد</span>
+                                {% else %}
+                                <span class="text-gray-500 text-sm italic">غير محدد</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                {% if u.pending_farm_name %}
+                                <div class="flex flex-col gap-1">
+                                    <span class="badge badge-pending" style="font-size:9px; width:fit-content;">⏳ {{
+                                        u.pending_farm_name }}</span>
+                                    <div class="flex gap-1 mt-1">
+                                        <button onclick="approveName({{ u.id }})" class="action-btn action-btn-green"
+                                            style="font-size:10px; padding:3px 8px;">✅</button>
+                                        <button onclick="rejectName({{ u.id }})" class="action-btn action-btn-red"
+                                            style="font-size:10px; padding:3px 8px;">❌</button>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <span class="text-gray-500 text-xs">—</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                <div class="text-xs text-gray-400 space-y-1">
+                                    <div>🌿 {{ u.crop_type or 'غير محدد' }}</div>
+                                    <div>📐 {{ u.area_feddan or 0 }} فدان</div>
+                                    {% if u.pump_flow_rate %}
+                                    <div>💧 {{ u.pump_flow_rate }} م³/س</div>
+                                    {% endif %}
+                                </div>
+                            </td>
+
+                            <td>
+                                {% set mods = u.modules_access or '["basic"]' %}
+                                <div class="flex flex-wrap gap-1" id="modules-{{ u.id }}">
+                                    {% if '"basic"' in mods %}<span class="module-tag">basic</span>{% endif %}
+                                    {% if '"digital_twin"' in mods %}<span class="module-tag">digital_twin</span>{% else
+                                    %}<span class="module-tag inactive">digital_twin</span>{% endif %}
+                                    {% if '"advanced_charts"' in mods %}<span class="module-tag">charts+</span>{% else
+                                    %}<span class="module-tag inactive">charts+</span>{% endif %}
+                                    {% if '"export"' in mods %}<span class="module-tag">export</span>{% else %}<span
+                                        class="module-tag inactive">export</span>{% endif %}
+                                </div>
+                                <button
+                                    onclick="openAccessModal({{ u.id }}, '{{ u.name }}', {{ u.modules_access | default('\'[\"
+                                    basic\"]\'' ) | tojson }})" class="action-btn action-btn-gold mt-2"
+                                    style="font-size:10px; padding:3px 10px;">
+                                    ✏️ تعديل الصلاحيات
+                                </button>
+                            </td>
+
+                            <td>
+                                <div class="flex flex-col gap-2">
+                                    {% if not u.is_admin %}
+                                    <a href="{{ url_for('admin_impersonate', target_user_id=u.id) }}"
+                                        class="action-btn action-btn-blue" style="font-size:11px;">
+                                        👁️ دخول كعميل
+                                    </a>
+                                    {% endif %}
+                                    <button onclick="triggerPipeline({{ u.id }}, '{{ u.name }}')"
+                                        class="action-btn action-btn-green" style="font-size:11px;">
+                                        🔄 تحديث بيانات
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-10 text-gray-500">
+                                لا يوجد مستخدمون مسجّلون بعد.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ── Toast ── -->
+    <div id="toast"></div>
+
+    <!-- ── Access Modal ── -->
+    <div id="access-modal"
+        style="display:none; position:fixed; inset:0; z-index:9998; background:rgba(0,0,0,0.75); align-items:center; justify-content:center;">
+        <div
+            style="background:linear-gradient(135deg,#0f2417,#0a1f12); border:1px solid rgba(16,185,129,0.35); border-radius:20px; padding:28px; width:90%; max-width:400px;">
+            <h4 style="color:#fff; font-size:16px; font-weight:800; margin-bottom:6px;">✨ تعديل صلاحيات الوصول</h4>
+            <p id="modal-user-name" style="color:#6b7280; font-size:13px; margin-bottom:20px;"></p>
+
+            <div class="flex flex-col gap-3" id="module-checkboxes">
+                <!-- injected by JS -->
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:24px;">
+                <button onclick="saveAccess()"
+                    style="flex:1; padding:11px; background:linear-gradient(135deg,#10b981,#059669); color:#fff; border:none; border-radius:10px; font-family:'Cairo',sans-serif; font-weight:800; cursor:pointer; font-size:14px;">
+                    💾 حفظ
+                </button>
+                <button onclick="closeAccessModal()"
+                    style="flex:1; padding:11px; background:rgba(255,255,255,0.06); color:#9ca3af; border:1px solid rgba(255,255,255,0.1); border-radius:10px; font-family:'Cairo',sans-serif; cursor:pointer; font-size:14px;">
+                    إلغاء
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const MODULES = [
+            { key: 'basic', label: '🌿 أساسي (Basic)', default: true },
+            { key: 'digital_twin', label: '🤖 النموذج الرقمي (Digital Twin)', default: false },
+            { key: 'advanced_charts', label: '📊 مخططات متقدمة (Charts+)', default: false },
+            { key: 'export', label: '📤 تصدير البيانات (Export)', default: false },
+        ];
+
+        let _currentUserId = null;
+
+        // ── Toast ──
+        function showToast(msg, isError = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.style.background = isError ? '#7f1d1d' : '#064e3b';
+            t.style.borderColor = isError ? '#ef4444' : '#10b981';
+            t.style.color = isError ? '#fca5a5' : '#d1fae5';
+            t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 3500);
+        }
+
+        // ── Approve / Reject Farm Name ──
+        function approveName(userId) {
+            if (!confirm('✅ هل أنت متأكد من الموافقة على اسم المزرعة الجديد؟')) return;
+            fetch(`/admin/approve-name/${userId}`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }
+            })
+                .then(r => r.json())
+                .then(d => { showToast(d.message, !d.success); if (d.success) setTimeout(() => location.reload(), 1200); })
+                .catch(() => showToast('خطأ في الاتصال', true));
+        }
+
+        function rejectName(userId) {
+            if (!confirm('❌ هل أنت متأكد من رفض طلب تغيير الاسم؟')) return;
+            fetch(`/admin/reject-name/${userId}`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }
+            })
+                .then(r => r.json())
+                .then(d => { showToast(d.message, !d.success); if (d.success) setTimeout(() => location.reload(), 1200); })
+                .catch(() => showToast('خطأ في الاتصال', true));
+        }
+
+        // ── Module Access Modal ──
+        function openAccessModal(userId, userName, modulesJson) {
+            _currentUserId = userId;
+            document.getElementById('modal-user-name').textContent = `العميل: ${userName}`;
+            document.getElementById('access-modal').style.display = 'flex';
+
+            let currentMods = [];
+            try { currentMods = JSON.parse(modulesJson); } catch (e) { currentMods = ['basic']; }
+
+            const container = document.getElementById('module-checkboxes');
+            container.innerHTML = MODULES.map(m => `
+                <label style="display:flex; align-items:center; gap:10px; cursor:pointer; padding:10px 14px;
+                    background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:10px;">
+                    <input type="checkbox" id="mod-${m.key}" value="${m.key}"
+                        ${currentMods.includes(m.key) ? 'checked' : ''}
+                        ${m.key === 'basic' ? 'disabled checked' : ''}
+                        style="width:16px; height:16px; accent-color:#10b981;" />
+                    <span style="color:#e2e8f0; font-family:'Cairo',sans-serif; font-size:14px;">${m.label}</span>
+                </label>
+            `).join('');
+        }
+
+        function closeAccessModal() {
+            document.getElementById('access-modal').style.display = 'none';
+            _currentUserId = null;
+        }
+
+        function saveAccess() {
+            const checked = Array.from(document.querySelectorAll('#module-checkboxes input:checked'))
+                .map(el => el.value);
+            if (!checked.includes('basic')) checked.unshift('basic');
+            const modulesJson = JSON.stringify(checked);
+
+            fetch(`/admin/update-access/${_currentUserId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ modules_access: modulesJson })
+            })
+                .then(r => r.json())
+                .then(d => {
+                    closeAccessModal();
+                    showToast(d.success ? '✅ تم تحديث الصلاحيات بنجاح' : d.message, !d.success);
+                    if (d.success) setTimeout(() => location.reload(), 1500);
+                })
+                .catch(() => showToast('خطأ في الاتصال', true));
+        }
+
+        // ── Trigger Pipeline for a User ──
+        function triggerPipeline(userId, userName) {
+            showToast(`🔄 جاري تحديث بيانات ${userName}…`);
+            // Impersonate → run pipeline → stop impersonation
+            // For simplicity: navigate to impersonation + dashboard (pipeline auto-runs on no data)
+            if (confirm(`تحديث بيانات المزرعة لـ "${userName}" سيتطلب الدخول مؤقتاً كعميل. هل تريد المتابعة؟`)) {
+                window.location.href = `/admin/impersonate/${userId}`;
+            }
+        }
+
+        // Close modal on backdrop click
+        document.getElementById('access-modal').addEventListener('click', function (e) {
+            if (e.target === this) closeAccessModal();
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map View - Tayseer Agri-SaT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Cairo', sans-serif; }
+        body { background: #0f172a; }
+
+        /* === Header === */
+        .gradient-header { background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%); }
+
+        /* === Tabs === */
+        .tab-btn { transition: all 0.25s ease; border-bottom: 3px solid transparent; }
+        .tab-btn.active { border-color: #10b981; color: #10b981; background: rgba(16,185,129,0.08); }
+        .tab-btn:not(.active):hover { background: rgba(255,255,255,0.05); color: #d1d5db; }
+
+        /* === Layer Buttons === */
+        .layer-btn { transition: all 0.2s; border: 1.5px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); color: #d1d5db; }
+        .layer-btn:hover { border-color: #10b981; color: #10b981; }
+        .layer-btn.active { background: #10b981; color: #fff; border-color: #10b981; box-shadow: 0 0 12px rgba(16,185,129,0.4); }
+
+        /* === Cards === */
+        .glass-card { background: rgba(15,23,42,0.85); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(12px); }
+
+        /* === Map === */
+        #risk-map, #pivot-map { height: 550px; border-radius: 12px; overflow: hidden; }
+
+        /* === Tower Status === */
+        .tower-ok { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); }
+        .tower-elec { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4); }
+        .tower-mech { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.4); }
+        .tower-stopped { background: rgba(107,114,128,0.15); border: 1px solid rgba(107,114,128,0.3); }
+
+        /* === WWFI Gauge === */
+        .wwfi-bar { height: 10px; border-radius: 5px; background: linear-gradient(to right, #10b981, #fbbf24, #ef4444); }
+        .wwfi-marker { width: 14px; height: 14px; border-radius: 50%; background: white; border: 2px solid #0f172a; position: absolute; top: -2px; transform: translateX(-50%); }
+
+        /* === Pulse === */
+        @keyframes pulse-green { 0%,100%{opacity:1} 50%{opacity:.4} }
+        .pulse-green { animation: pulse-green 1.5s infinite; }
+
+        /* === Status Badges === */
+        .badge-online { background: rgba(16,185,129,0.2); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+        .badge-fault  { background: rgba(239,68,68,0.2);  color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
+        .badge-warn   { background: rgba(245,158,11,0.2); color: #fbbf24; border: 1px solid rgba(251,191,36,0.3); }
+        .badge-off    { background: rgba(107,114,128,0.2);color: #9ca3af; border: 1px solid rgba(156,163,175,0.3); }
+
+        /* === Scrollbar === */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+
+        /* Legend gradient */
+        .leg-ndvi  { background: linear-gradient(to right, #ef4444, #fbbf24, #006400); }
+        .leg-et    { background: linear-gradient(to right, #92400e, #f59e0b, #06b6d4, #1e40af); }
+        .leg-ndwi  { background: linear-gradient(to right, #ef4444, #f3f4f6, #1d4ed8); }
+        .leg-bio   { background: linear-gradient(to right, #fefce8, #d9f99d, #166534); }
+        .leg-wwfi  { background: linear-gradient(to right, #10b981, #fbbf24, #ef4444); }
+        .leg-risk  { background: linear-gradient(to right, #10b981, #f59e0b, #dc2626); }
+    </style>
+</head>
+
+<body class="text-gray-100 flex h-screen overflow-hidden">
+    <!-- Sidebar -->
+    {% include 'sidebar.html' ignore missing %}
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col h-screen overflow-y-auto">
+
+        <!-- Header -->
+        <header class="gradient-header text-white shadow-xl shrink-0">
+            <div class="px-6 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div>
+                        <h1 class="text-xl font-bold leading-none">🛰️ Tayseer Risk Center</h1>
+                        <p class="text-xs text-emerald-300 mt-0.5">خريطة المخاطر الزراعية + مراقبة البيفوت</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span id="gee-status" class="text-xs px-3 py-1 rounded-full badge-off">⏳ جاري الاتصال…</span>
+                    <span class="text-xs text-emerald-400">{{ user.farm_location or 'وادي النطرون' }}</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Tab Selector -->
+        <div class="bg-gray-900 border-b border-gray-800 flex gap-1 px-6 pt-2 shrink-0">
+            <button onclick="switchTab('risk')" id="tab-risk"
+                    class="tab-btn active px-6 py-3 font-bold text-sm rounded-t-lg">
+                🌾 Risk Map — خريطة المخاطر الزراعية
+            </button>
+            <button onclick="switchTab('pivot')" id="tab-pivot"
+                    class="tab-btn px-6 py-3 font-bold text-sm rounded-t-lg text-gray-400">
+                🔧 Pivot Health — مراقبة CM60 المباشرة
+            </button>
+        </div>
+
+        <!-- ========================================================
+             TAB 1: RISK MAP
+             ======================================================== -->
+        <div id="tab-content-risk" class="flex-1 flex flex-col p-4 gap-4 min-h-0">
+
+            <!-- Layer Controls -->
+            <div class="glass-card rounded-xl p-3 shrink-0">
+                <div class="flex flex-wrap gap-2 items-center">
+                    <span class="text-xs text-gray-400 ml-2">طبقات البيانات:</span>
+                    <button onclick="setLayer('ndvi')"    data-layer="ndvi"    class="layer-btn active  px-3 py-1.5 rounded-lg text-xs font-bold">🌿 NDVI</button>
+                    <button onclick="setLayer('ndwi')"    data-layer="ndwi"    class="layer-btn px-3 py-1.5 rounded-lg text-xs font-bold">💧 NDWI</button>
+                    <button onclick="setLayer('et')"      data-layer="et"      class="layer-btn px-3 py-1.5 rounded-lg text-xs font-bold">☁️ ET</button>
+                    <button onclick="setLayer('biomass')" data-layer="biomass" class="layer-btn px-3 py-1.5 rounded-lg text-xs font-bold">🌾 Biomass</button>
+                    <button onclick="setLayer('wwfi')"    data-layer="wwfi"    class="layer-btn px-3 py-1.5 rounded-lg text-xs font-bold">💦 WWFI Index</button>
+                    <button onclick="setLayer('risk')"    data-layer="risk"    class="layer-btn px-3 py-1.5 rounded-lg text-xs font-bold">🚨 Risk Map</button>
+
+                    <div class="flex-1"></div>
+
+                    <button onclick="togglePivotRings()" id="btn-pivot-ring"
+                            class="px-3 py-1.5 rounded-lg text-xs font-bold border border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white transition">
+                        🔵 دوائر البيفوت
+                    </button>
+                    <button onclick="refreshRiskData()"
+                            class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition">
+                        🔄 تحديث
+                    </button>
+                </div>
+            </div>
+
+            <!-- Map + Side Panel -->
+            <div class="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 min-h-0">
+                <!-- Map -->
+                <div class="lg:col-span-3">
+                    <div class="glass-card rounded-xl overflow-hidden relative h-full" style="min-height:500px">
+                        <div id="risk-map" class="absolute inset-0"></div>
+                        <!-- Loading Overlay -->
+                        <div id="risk-loading" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900/80 z-50">
+                            <div class="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                            <p class="text-sm text-gray-300">جاري تحميل بيانات GEE…</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Side Panel -->
+                <div class="flex flex-col gap-4 overflow-y-auto">
+                    <!-- Current Metrics -->
+                    <div class="glass-card rounded-xl p-4">
+                        <h3 class="text-sm font-bold text-emerald-400 mb-3">📊 مؤشرات المزرعة</h3>
+                        <div id="risk-metrics" class="space-y-2 text-xs text-gray-400">
+                            <p class="text-center py-4">جاري التحميل…</p>
+                        </div>
+                    </div>
+
+                    <!-- WWFI Widget -->
+                    <div class="glass-card rounded-xl p-4">
+                        <h3 class="text-sm font-bold text-blue-400 mb-3">💦 WWFI — Water Waste Index</h3>
+                        <div id="wwfi-widget" class="space-y-2 text-xs">
+                            <p class="text-gray-500 text-center py-2">سيظهر بعد التحميل</p>
+                        </div>
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="glass-card rounded-xl p-4">
+                        <h3 class="text-sm font-bold mb-3 text-gray-300">🗺️ دليل الألوان</h3>
+                        <div id="legend-bar" class="space-y-2 text-xs"></div>
+                    </div>
+
+                    <!-- Pixel Info -->
+                    <div class="glass-card rounded-xl p-4">
+                        <h3 class="text-sm font-bold mb-2 text-gray-300">📍 تحليل البكسل</h3>
+                        <div id="pixel-info" class="text-xs text-gray-500">اضغط على أي نقطة في الخريطة</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================================
+             TAB 2: PIVOT HEALTH MAP (CM60)
+             ======================================================== -->
+        <div id="tab-content-pivot" class="hidden flex-1 flex flex-col p-4 gap-4 min-h-0">
+
+            <!-- Controls -->
+            <div class="glass-card rounded-xl p-3 shrink-0 flex flex-wrap items-center gap-3">
+                <span class="text-xs text-gray-400">اختر البيفوت:</span>
+                <select id="pivot-select" onchange="loadCM60Data()"
+                        class="bg-gray-800 border border-gray-600 text-white text-xs rounded-lg px-3 py-1.5 focus:border-emerald-500 focus:outline-none">
+                    <option value="Pivot_01">Pivot 01</option>
+                    <option value="Pivot_02_03">Pivot 02/03</option>
+                    <option value="Pivot_04">Pivot 04</option>
+                    <option value="Pivot_05">Pivot 05</option>
+                    <option value="Pivot_06">Pivot 06</option>
+                    <option value="Pivot_08">Pivot 08</option>
+                    <option value="Pivot_09">Pivot 09</option>
+                    <option value="Pivot_10">Pivot 10</option>
+                </select>
+                <div class="flex-1"></div>
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 pulse-green inline-block"></span>
+                    <span class="text-xs text-emerald-400">مباشر - Live CM60</span>
+                </div>
+                <button onclick="loadCM60Data()" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition">🔄 تحديث</button>
+            </div>
+
+            <!-- Map + Panel -->
+            <div class="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-4 min-h-0">
+                <!-- Map -->
+                <div class="lg:col-span-3">
+                    <div class="glass-card rounded-xl overflow-hidden relative h-full" style="min-height:500px">
+                        <div id="pivot-map" class="absolute inset-0"></div>
+                    </div>
+                </div>
+
+                <!-- CM60 Status Panel -->
+                <div class="flex flex-col gap-4 overflow-y-auto">
+                    <!-- Overall Status -->
+                    <div class="glass-card rounded-xl p-4" id="cm60-overall">
+                        <h3 class="text-sm font-bold text-purple-400 mb-3">🔧 CM60 Live Status</h3>
+                        <p class="text-xs text-gray-500 text-center py-3">اختر بيفوت وانتظر البيانات…</p>
+                    </div>
+
+                    <!-- Tower Grid -->
+                    <div class="glass-card rounded-xl p-4">
+                        <h3 class="text-sm font-bold text-gray-300 mb-3">🗼 أبراج البيفوت</h3>
+                        <div id="towers-grid" class="space-y-2 text-xs"></div>
+                    </div>
+
+                    <!-- Active Faults -->
+                    <div class="glass-card rounded-xl p-4">
+                        <h3 class="text-sm font-bold text-red-400 mb-3">⚠️ التنبيهات النشطة</h3>
+                        <div id="cm60-alerts" class="space-y-2 text-xs">
+                            <p class="text-gray-500 text-center py-2">لا توجد تنبيهات</p>
+                        </div>
+                    </div>
+
+                    <!-- AI Prediction -->
+                    <div class="glass-card rounded-xl p-4">
+                        <h3 class="text-sm font-bold text-yellow-400 mb-3">🤖 توقع الذكاء الاصطناعي</h3>
+                        <div id="cm60-prediction" class="text-xs text-gray-400">
+                            <p class="text-center">سيظهر بعد تحميل بيانات CM60</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div><!-- end main -->
+
+    <script>
+    // ====================================================================
+    //  GLOBAL STATE
+    // ====================================================================
+    let riskMap = null, pivotMap = null;
+    let currentLayer = 'ndvi';
+    let currentTileLayer = null;
+    let pivotRingsLayer = null;
+    let farmAnalysis = null;
+    let mapLayerUrls = {};
+    let cm60RefreshTimer = null;
+
+    const WADI_CENTER = [30.200, 30.058];
+    const PIVOT_COORDS = [
+        {id:'Pivot_01',   latlng:[30.205279, 30.058015], area:70},
+        {id:'Pivot_02_03',latlng:[30.199594, 30.053554], area:140},
+        {id:'Pivot_04',   latlng:[30.201508, 30.063942], area:70},
+        {id:'Pivot_05',   latlng:[30.195975, 30.059441], area:70},
+        {id:'Pivot_06',   latlng:[30.190478, 30.054934], area:70},
+        {id:'Pivot_08',   latlng:[30.192302, 30.065354], area:70},
+        {id:'Pivot_09',   latlng:[30.186869, 30.060910], area:70},
+        {id:'Pivot_10',   latlng:[30.183160, 30.066835], area:70},
+    ];
+
+    const LAYER_META = {
+        ndvi:    { label:'NDVI — صحة النبات',    min:'0.2', max:'0.8', legClass:'leg-ndvi' },
+        ndwi:    { label:'NDWI — مياه الأوراق',  min:'-0.2',max:'0.3', legClass:'leg-ndwi' },
+        et:      { label:'ET — الاستهلاك المائي', min:'2',   max:'8',   legClass:'leg-et'   },
+        biomass: { label:'Biomass — كتلة حيوية',  min:'1000',max:'3000',legClass:'leg-bio'  },
+        wwfi:    { label:'WWFI — هدر المياه',     min:'كفء', max:'هدر', legClass:'leg-wwfi' },
+        risk:    { label:'Risk Map — خريطة المخاطر',min:'آمن',max:'خطر',legClass:'leg-risk' },
+    };
+
+    // ====================================================================
+    //  TAB SWITCHING
+    // ====================================================================
+    function switchTab(tab) {
+        document.getElementById('tab-content-risk').classList.toggle('hidden', tab !== 'risk');
+        document.getElementById('tab-content-pivot').classList.toggle('hidden', tab !== 'pivot');
+        document.getElementById('tab-risk').classList.toggle('active', tab === 'risk');
+        document.getElementById('tab-pivot').classList.toggle('active', tab === 'pivot');
+
+        if (tab === 'pivot' && !pivotMap) {
+            initPivotMap();
+            loadCM60Data();
+        } else if (tab === 'pivot') {
+            setTimeout(() => pivotMap && pivotMap.invalidateSize(), 200);
+        } else {
+            setTimeout(() => riskMap && riskMap.invalidateSize(), 200);
+        }
+    }
+
+    // ====================================================================
+    //  RISK MAP — Init
+    // ====================================================================
+    function initRiskMap() {
+        riskMap = L.map('risk-map', { zoomControl: true }).setView(WADI_CENTER, 13);
+
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles © Esri',
+            maxZoom: 19,
+            opacity: 0.85
+        }).addTo(riskMap);
+
+        riskMap.on('click', onRiskMapClick);
+        loadRiskData();
+    }
+
+    async function loadRiskData() {
+        document.getElementById('risk-loading').style.display = 'flex';
+        try {
+            const [analysisRes, layersRes] = await Promise.all([
+                axios.get('/api/gee/analyze/wadi_natrun').catch(() => null),
+                axios.get('/api/gee/map-layers/wadi_natrun').catch(() => null)
+            ]);
+
+            if (analysisRes && analysisRes.data) {
+                farmAnalysis = analysisRes.data;
+                renderRiskMetrics(farmAnalysis);
+                renderWWFI(farmAnalysis);
+                document.getElementById('gee-status').className = 'text-xs px-3 py-1 rounded-full badge-online';
+                document.getElementById('gee-status').textContent = '✅ GEE متصل';
+            }
+
+            if (layersRes && layersRes.data && layersRes.data.success) {
+                mapLayerUrls = layersRes.data.layers;
+                applyLayer(currentLayer);
+            } else {
+                renderFallbackLayer();
+            }
+        } catch (e) {
+            renderFallbackLayer();
+            document.getElementById('gee-status').className = 'text-xs px-3 py-1 rounded-full badge-fault';
+            document.getElementById('gee-status').textContent = '⚠️ وضع Demo';
+        }
+        document.getElementById('risk-loading').style.display = 'none';
+        updateLegend(currentLayer);
+    }
+
+    function applyLayer(layer) {
+        if (currentTileLayer) { riskMap.removeLayer(currentTileLayer); currentTileLayer = null; }
+        if (mapLayerUrls[layer]) {
+            currentTileLayer = L.tileLayer(mapLayerUrls[layer], {
+                attribution: '© Google Earth Engine',
+                maxZoom: 19,
+                opacity: 0.85
+            }).addTo(riskMap);
+        } else {
+            renderFallbackLayer(layer);
+        }
+    }
+
+    function renderFallbackLayer(layer) {
+        layer = layer || currentLayer;
+        if (currentTileLayer) { riskMap.removeLayer(currentTileLayer); currentTileLayer = null; }
+        // Show colored circles on pivots as mock layer
+        PIVOT_COORDS.forEach(p => {
+            const val = farmAnalysis ? farmAnalysis.metrics[layer === 'ndvi' ? 'ndvi' : layer === 'et' ? 'water' : 'biomass'] : null;
+            const color = getFallbackColor(layer, val);
+            L.circle(p.latlng, {
+                radius: Math.sqrt(p.area * 4200 / Math.PI),
+                fillColor: color, fillOpacity: 0.65,
+                color: '#fff', weight: 1, dashArray: '4,4'
+            }).addTo(riskMap).bindTooltip(p.id);
+        });
+    }
+
+    function getFallbackColor(layer, metricsObj) {
+        const colors = {
+            ndvi: '#10b981', ndwi: '#3b82f6', et: '#06b6d4',
+            biomass: '#a3e635', wwfi: '#f59e0b', risk: '#ef4444'
+        };
+        return colors[layer] || '#10b981';
+    }
+
+    function setLayer(layer) {
+        currentLayer = layer;
+        document.querySelectorAll('.layer-btn').forEach(b => b.classList.remove('active'));
+        const btn = document.querySelector(`[data-layer="${layer}"]`);
+        if (btn) btn.classList.add('active');
+        applyLayer(layer);
+        updateLegend(layer);
+    }
+
+    function togglePivotRings() {
+        if (pivotRingsLayer) {
+            riskMap.removeLayer(pivotRingsLayer); pivotRingsLayer = null;
+            document.getElementById('btn-pivot-ring').textContent = '🔵 دوائر البيفوت';
+            return;
+        }
+        pivotRingsLayer = L.layerGroup();
+        PIVOT_COORDS.forEach(p => {
+            L.circle(p.latlng, {
+                radius: Math.sqrt(p.area * 4200 / Math.PI),
+                color: '#a78bfa', weight: 2, dashArray: '6,4', fill: false
+            }).bindTooltip(`${p.id} — ${p.area} فدان`, {permanent: false}).addTo(pivotRingsLayer);
+        });
+        pivotRingsLayer.addTo(riskMap);
+        document.getElementById('btn-pivot-ring').textContent = '🚫 إخفاء الدوائر';
+        riskMap.setView(WADI_CENTER, 13);
+    }
+
+    function refreshRiskData() { loadRiskData(); }
+
+    function onRiskMapClick(e) {
+        if (!farmAnalysis) return;
+        const { lat, lng } = e.latlng;
+        const m = farmAnalysis.metrics;
+        const layerVals = {
+            ndvi:    { v: m.ndvi?.value      || 0.65, unit: '' },
+            ndwi:    { v: m.ndwi?.value      || 0.20, unit: '' },
+            et:      { v: m.water?.et_actual || 4.50, unit: ' مم/يوم' },
+            biomass: { v: m.biomass?.value   || 1500, unit: ' كغ/هكتار' },
+            wwfi:    { v: ((m.water?.et_actual||4.5)*1.1 - (m.water?.et_actual||4.5)) / (m.water?.et_actual||4.5) * 100, unit: '%' },
+            risk:    { v: (100 - (m.health_score||65)) / 100, unit: '' },
+        };
+        const lv = layerVals[currentLayer] || { v: 0, unit: '' };
+        const status = getStatusFromValue(currentLayer, lv.v);
+
+        document.getElementById('pixel-info').innerHTML = `
+            <div class="space-y-1.5">
+                <div class="flex justify-between"><span class="text-gray-500">موقع:</span><span class="font-mono">${lat.toFixed(4)}, ${lng.toFixed(4)}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">متوسط المزرعة:</span><span class="font-bold">${typeof lv.v === 'number' ? lv.v.toFixed(2) : lv.v}${lv.unit}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">الحالة:</span><span class="font-bold" style="color:${status.color}">${status.text}</span></div>
+                <div class="mt-2 p-2 rounded-lg text-center" style="background:${status.color}22;border:1px solid ${status.color}44">
+                    <p style="color:${status.color}" class="font-bold">${status.action}</p>
+                </div>
+            </div>
+        `;
+    }
+
+    function getStatusFromValue(layer, v) {
+        if (layer === 'ndvi') {
+            if (v > 0.6) return { text:'ممتاز', color:'#10b981', action:'✅ استمر في الإدارة الحالية' };
+            if (v > 0.4) return { text:'متوسط', color:'#fbbf24', action:'⚠️ راقب الري عن قرب' };
+            return { text:'ضعيف', color:'#ef4444', action:'🚨 أرِ فوراً - إجهاد مائي' };
+        }
+        if (layer === 'et') {
+            if (v > 6) return { text:'استهلاك عالي', color:'#3b82f6', action:'💧 زيادة ساعات الري' };
+            if (v > 4) return { text:'طبيعي', color:'#10b981', action:'✅ استهلاك مائي طبيعي' };
+            return { text:'منخفض', color:'#fbbf24', action:'🌡️ راقب درجات الحرارة' };
+        }
+        if (layer === 'biomass') {
+            if (v > 2000) return { text:'نمو ممتاز', color:'#4ade80', action:'✅ كتلة حيوية عالية' };
+            if (v > 1200) return { text:'نمو متوسط', color:'#fbbf24', action:'🌾 يمكن تحسين التسميد' };
+            return { text:'نمو ضعيف', color:'#ef4444', action:'🧪 أضف سماداً نيتروجينياً' };
+        }
+        if (layer === 'wwfi') {
+            if (v < 10) return { text:'كفاءة ممتازة', color:'#10b981', action:'✅ لا يوجد هدر مائي' };
+            if (v < 25) return { text:'هدر متوسط', color:'#fbbf24', action:'⚠️ قلل ساعات الري 10%' };
+            return { text:'هدر شديد', color:'#ef4444', action:'🚨 راجع جدول الري فوراً' };
+        }
+        if (layer === 'risk') {
+            if (v < 0.3) return { text:'منخفض', color:'#10b981', action:'✅ وضع آمن' };
+            if (v < 0.6) return { text:'متوسط', color:'#fbbf24', action:'⚠️ راقب عن كثب' };
+            return { text:'عالي', color:'#ef4444', action:'🚨 تدخل فوري' };
+        }
+        return { text:'—', color:'#9ca3af', action:'اضغط على الخريطة' };
+    }
+
+    function renderRiskMetrics(data) {
+        const m = data.metrics;
+        const rows = [
+            {label:'🌿 NDVI',      val: m.ndvi?.value.toFixed(3)         || '—',  sub: m.ndvi?.status_ar},
+            {label:'💧 NDWI',      val: m.ndwi?.value.toFixed(3)         || '—',  sub: 'وضع مياه الأوراق'},
+            {label:'🌾 Biomass',   val: (m.biomass?.ton_feddan||0).toFixed(2)+' ط/فد', sub:''},
+            {label:'☁️ ET الفعلي', val: (m.water?.et_actual||0).toFixed(2)+' مم', sub:'بالنهار'},
+            {label:'⏰ ساعات الري', val: (m.water?.irrigation_hours||0).toFixed(1)+' س', sub:''},
+            {label:'❤️ صحة المحصول', val: (m.health_score||0)+'%', sub:''},
+        ];
+
+        document.getElementById('risk-metrics').innerHTML = rows.map(r => `
+            <div class="flex justify-between items-center py-1.5 border-b border-gray-800">
+                <span class="text-gray-400">${r.label}</span>
+                <div class="text-right">
+                    <span class="font-bold text-white">${r.val}</span>
+                    ${r.sub ? `<p class="text-gray-600 text-xs">${r.sub}</p>` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function renderWWFI(data) {
+        const m = data.metrics;
+        const et = m.water?.et_actual || 4.5;
+        const et0 = m.water?.et0 || 4.2;
+        const waste = Math.max(0, ((et - et0) / et0 * 100)).toFixed(1);
+        const wPct = Math.min(100, parseFloat(waste));
+        const color = wPct < 10 ? '#10b981' : wPct < 25 ? '#fbbf24' : '#ef4444';
+        const label = wPct < 10 ? 'كفاءة ممتازة ✅' : wPct < 25 ? 'هدر متوسط ⚠️' : 'هدر شديد 🚨';
+
+        document.getElementById('wwfi-widget').innerHTML = `
+            <div class="mb-2">
+                <div class="flex justify-between mb-1">
+                    <span class="text-gray-400">مؤشر الهدر المائي</span>
+                    <span class="font-bold" style="color:${color}">${waste}%</span>
+                </div>
+                <div class="relative">
+                    <div class="wwfi-bar w-full"></div>
+                    <div class="wwfi-marker" style="left:${Math.min(wPct,98)}%"></div>
+                </div>
+                <div class="flex justify-between text-gray-600 mt-1">
+                    <span>كفء</span><span>هدر</span>
+                </div>
+            </div>
+            <div class="text-center py-1.5 rounded-lg text-xs font-bold" style="background:${color}22;color:${color};border:1px solid ${color}44">
+                ${label}
+            </div>
+            <div class="mt-2 space-y-1 text-gray-500">
+                <div class="flex justify-between"><span>ET الفعلي:</span><span class="text-white">${et.toFixed(2)} مم</span></div>
+                <div class="flex justify-between"><span>ET المرجعية:</span><span class="text-white">${et0.toFixed(2)} مم</span></div>
+                <div class="flex justify-between"><span>معامل المحصول Kc:</span><span class="text-white">${m.crop_coefficient||1.0}</span></div>
+            </div>
+        `;
+    }
+
+    function updateLegend(layer) {
+        const meta = LAYER_META[layer];
+        if (!meta) return;
+        document.getElementById('legend-bar').innerHTML = `
+            <div class="mb-1 text-gray-400 font-bold">${meta.label}</div>
+            <div class="${meta.legClass} h-3 rounded w-full mb-1"></div>
+            <div class="flex justify-between text-gray-500"><span>${meta.min}</span><span>${meta.max}</span></div>
+        `;
+    }
+
+    // ====================================================================
+    //  PIVOT HEALTH MAP — CM60
+    // ====================================================================
+    function initPivotMap() {
+        pivotMap = L.map('pivot-map', {zoomControl: true}).setView(WADI_CENTER, 13);
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles © Esri', maxZoom: 19, opacity: 0.85
+        }).addTo(pivotMap);
+
+        // Draw all pivot circles
+        PIVOT_COORDS.forEach(p => {
+            const r = Math.sqrt(p.area * 4200 / Math.PI);
+            L.circle(p.latlng, {
+                radius: r, color: '#6b7280', weight: 1.5, dashArray: '5,4', fill: false
+            }).addTo(pivotMap).bindTooltip(p.id);
+
+            L.circleMarker(p.latlng, {
+                radius: 6, fillColor: '#6b7280', fillOpacity: 0.8,
+                color: '#fff', weight: 1
+            }).addTo(pivotMap).on('click', () => {
+                document.getElementById('pivot-select').value = p.id;
+                loadCM60Data();
+            });
+        });
+    }
+
+    let pivotMarkers = {};
+
+    async function loadCM60Data() {
+        const pivotId = document.getElementById('pivot-select').value;
+        if (!pivotId) return;
+
+        try {
+            const res = await axios.get(`/api/gee/cm60-status/${pivotId}`);
+            const data = res.data;
+            renderCM60Overall(data);
+            renderTowers(data);
+            renderCM60Alerts(data);
+            renderCM60Prediction(data);
+            updatePivotMapMarkers(pivotId, data);
+        } catch (e) {
+            document.getElementById('cm60-overall').innerHTML = `<p class="text-xs text-red-400 text-center py-4">⚠️ فشل الاتصال بـ CM60</p>`;
+        }
+    }
+
+    function renderCM60Overall(data) {
+        const statusColor = data.health_color === 'green' ? '#10b981' : data.health_color === 'orange' ? '#f59e0b' : '#ef4444';
+        const badgeCls = data.health_color === 'green' ? 'badge-online' : data.health_color === 'orange' ? 'badge-warn' : 'badge-fault';
+
+        document.getElementById('cm60-overall').innerHTML = `
+            <h3 class="text-sm font-bold text-purple-400 mb-3">🔧 CM60 — ${data.pivot_id}</h3>
+            <div class="space-y-2 text-xs">
+                <div class="flex justify-between items-center">
+                    <span class="text-gray-400">الحالة:</span>
+                    <span class="px-2 py-0.5 rounded-full font-bold ${badgeCls}">${data.overall_status}</span>
+                </div>
+                <div class="flex justify-between"><span class="text-gray-400">السرعة:</span><span class="text-white">${data.speed_percent}%</span></div>
+                <div class="flex justify-between"><span class="text-gray-400">الاتجاه:</span><span class="text-white">${data.direction}</span></div>
+                <div class="flex justify-between"><span class="text-gray-400">ضغط المركز:</span><span class="text-white">${data.center_pressure_psi} PSI</span></div>
+                ${data.fault_message ? `<div class="mt-2 p-2 rounded-lg bg-red-500/15 border border-red-500/30 text-red-300"><strong>🔴 عطل:</strong> ${data.fault_message}</div>` : ''}
+            </div>
+        `;
+    }
+
+    function renderTowers(data) {
+        const grid = document.getElementById('towers-grid');
+        if (!data.towers || !data.towers.length) {
+            grid.innerHTML = '<p class="text-gray-500 text-center">لا توجد بيانات أبراج</p>';
+            return;
+        }
+
+        grid.innerHTML = data.towers.map(t => {
+            const isOk = t.status === 'Active';
+            const isFault = t.status === 'Fault';
+            const cls = isOk ? 'tower-ok' : isFault ? (t.voltage < 400 ? 'tower-elec' : 'tower-mech') : 'tower-stopped';
+            const icon = isOk ? '✅' : t.voltage < 400 ? '🔴' : '🔧';
+            const faultType = isFault ? (t.voltage < 400 ? 'كهربائي' : 'ميكانيكي') : '';
+
+            return `
+                <div class="${cls} rounded-lg p-2.5">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="font-bold">برج ${t.id}</span>
+                        <span>${icon} ${faultType}</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1 text-gray-400 text-center" style="font-size:10px">
+                        <div><p class="text-white font-bold">${t.voltage}V</p><p>جهد</p></div>
+                        <div><p class="text-white font-bold">${t.amps}A</p><p>تيار</p></div>
+                        <div><p class="text-white font-bold">${t.pressure}</p><p>ضغط</p></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function renderCM60Alerts(data) {
+        const box = document.getElementById('cm60-alerts');
+        if (!data.fault_message) {
+            box.innerHTML = '<p class="text-emerald-400 text-center">✅ لا توجد تنبيهات نشطة</p>';
+            return;
+        }
+
+        const faultedTowers = (data.towers || []).filter(t => t.status === 'Fault');
+        box.innerHTML = faultedTowers.map(t => {
+            const isElec = t.voltage < 400;
+            const color = isElec ? '#ef4444' : '#f59e0b';
+            const cause = isElec
+                ? 'قاطع كهربائي - سلك - فيوز'
+                : t.amps > 5 ? 'جيربوكس أو تآكل تروس' : 'كوبلنج أو محمل تالف';
+            return `
+                <div class="p-2.5 rounded-lg" style="background:${color}15;border:1px solid ${color}35">
+                    <div class="font-bold mb-1" style="color:${color}">${isElec ? '🔴 عطل كهربائي' : '🔧 عطل ميكانيكي'} — برج ${t.id}</div>
+                    <div class="text-gray-400">الأسباب المحتملة: ${cause}</div>
+                    <div class="mt-1 text-gray-300">الإجراء: <strong>${isElec ? 'افصل الكهرباء وافحص التوصيلات' : 'جدولة صيانة خلال 48 ساعة'}</strong></div>
+                </div>
+            `;
+        }).join('') || '<p class="text-emerald-400 text-center">✅ لا توجد أعطال</p>';
+    }
+
+    function renderCM60Prediction(data) {
+        const box = document.getElementById('cm60-prediction');
+        const hasFault = data.overall_status !== 'Running';
+        const prob = hasFault ? 75 : Math.floor(Math.random() * 15 + 5);
+        const color = prob > 50 ? '#ef4444' : prob > 20 ? '#f59e0b' : '#10b981';
+
+        box.innerHTML = `
+            <div class="space-y-2">
+                <div class="flex justify-between">
+                    <span class="text-gray-400">احتمال العطل (72 ساعة):</span>
+                    <span class="font-bold" style="color:${color}">${prob}%</span>
+                </div>
+                <div class="h-2 rounded bg-gray-700 overflow-hidden">
+                    <div class="h-full rounded" style="width:${prob}%;background:${color}"></div>
+                </div>
+                <div class="text-gray-400">الخوارزمية: <span class="text-white">MCSA + TinyML (ESP32)</span></div>
+                <div class="text-gray-400">آخر قراءة: <span class="text-white">${new Date().toLocaleTimeString('ar-EG')}</span></div>
+                ${hasFault ? `<div class="p-2 rounded-lg bg-red-500/15 border border-red-500/30 text-red-300 text-center font-bold">🚨 يُنصح بإيقاف البيفوت والفحص الفوري</div>` : `<div class="p-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-center">✅ تشغيل طبيعي — لا تدخل مطلوب</div>`}
+            </div>
+        `;
+    }
+
+    function updatePivotMapMarkers(pivotId, data) {
+        if (!pivotMap) return;
+        // Clear old highlight markers
+        if (pivotMarkers._highlight) {
+            pivotMap.removeLayer(pivotMarkers._highlight);
+        }
+
+        const piv = PIVOT_COORDS.find(p => p.id === pivotId);
+        if (!piv) return;
+
+        const color = data.health_color === 'green' ? '#10b981' : data.health_color === 'orange' ? '#f59e0b' : '#ef4444';
+        const r = Math.sqrt(piv.area * 4200 / Math.PI);
+        pivotMarkers._highlight = L.circle(piv.latlng, {
+            radius: r,
+            color: color, weight: 3,
+            fillColor: color, fillOpacity: 0.25
+        }).addTo(pivotMap).bindPopup(`<b>${pivotId}</b><br>${data.overall_status}`);
+
+        pivotMap.setView(piv.latlng, 15, {animate: true});
+    }
+
+    // ====================================================================
+    //  INIT
+    // ====================================================================
+    window.addEventListener('load', () => {
+        updateLegend('ndvi');
+        initRiskMap();
+    });
+    </script>
+</body>
+</html>

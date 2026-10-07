@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Cairo',Arial,sans-serif;direction:rtl;background:#fef2f2;color:#1f2937;padding:20px}
+  .wrap{max-width:600px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 20px rgba(220,38,38,.15)}
+  .hdr{background:linear-gradient(135deg,#b91c1c,#dc2626);color:#fff;padding:28px;text-align:center}
+  .hdr-icon{font-size:52px;line-height:1}
+  .hdr h1{font-size:24px;font-weight:800;margin:10px 0 4px}
+  .hdr p{opacity:.9;font-size:14px;margin:2px 0}
+  .body{padding:28px}
+  .alert-main{background:#fef2f2;border:2px solid #dc2626;border-radius:10px;padding:20px;margin:18px 0}
+  .alert-main h2{color:#991b1b;font-size:18px;margin-bottom:10px}
+  .alert-main p{font-size:15px;line-height:1.7;color:#374151}
+  .action-box{background:#fffbeb;border-right:4px solid #f59e0b;padding:16px;border-radius:8px;margin:18px 0}
+  .action-box h3{color:#92400e;font-size:14px;margin-bottom:8px}
+  .action-box p{font-size:15px;font-weight:700;color:#78350f}
+  .details-box{background:#f9fafb;border-radius:8px;padding:16px;margin:18px 0}
+  .details-box ul{padding-right:18px;font-size:14px;line-height:2;color:#374151}
+  .cta{text-align:center;margin:28px 0}
+  .cta a{background:#dc2626;color:#fff;text-decoration:none;padding:14px 40px;border-radius:8px;font-weight:700;font-size:15px;display:inline-block}
+  .contact{background:#f3f4f6;border-radius:8px;padding:14px;text-align:center;font-size:13px;color:#6b7280;margin-top:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <div class="hdr-icon">🚨</div>
+    <h1>تحذير عاجل!</h1>
+    <p>{{ farm_name }}</p>
+    <p>{{ date if date else '' }}</p>
+  </div>
+  <div class="body">
+    <div class="alert-main">
+      <h2>{{ alert_title }}</h2>
+      <p>{{ alert_message }}</p>
+    </div>
+
+    <div class="action-box">
+      <h3>⚡ إجراء فوري مطلوب:</h3>
+      <p>{{ action_required }}</p>
+    </div>
+
+    {% if details %}
+    <div class="details-box">
+      <strong style="font-size:14px">📋 التفاصيل:</strong>
+      <ul>{% for d in details %}<li>{{ d }}</li>{% endfor %}</ul>
+    </div>
+    {% endif %}
+
+    <div class="cta">
+      <a href="{{ dashboard_url }}">عرض لوحة التحكم الآن ←</a>
+    </div>
+
+    <div class="contact">
+      📞 الطوارئ: {{ support_phone }}<br>
+      📧 الدعم: <a href="mailto:{{ support_email }}" style="color:#6b7280">{{ support_email }}</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,1658 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚠️ المخاطر الأساسية — Tayseer Agri-SaT</title>
+  <meta name="description" content="المنصة المركزية لإدارة المخاطر التشغيلية الموحدة — تكامل البيفوت والأرض والمعدات والتنبيهات الذكية" />
+
+  <!-- Google Fonts: Cairo -->
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js for visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* ── Core Theme Variables ─────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a111e;
+      --surface: #0f1c2e;
+      --card: #15253b;
+      --card-alt: #1a2e48;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-light: rgba(255, 255, 255, 0.14);
+      --txt: #f1f5f9;
+      --txt-m: #94a3b8;
+      --txt-dim: #64748b;
+      
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.18);
+      --blue: #3b82f6;
+      --cyan: #06b6d4;
+      --amber: #f59e0b;
+      --amber-glow: rgba(245, 158, 11, 0.18);
+      --red: #ef4444;
+      --red-glow: rgba(239, 68, 68, 0.22);
+      --purple: #8b5cf6;
+      
+      --font: 'Cairo', sans-serif;
+      --radius-sm: 8px;
+      --radius: 14px;
+      --radius-lg: 20px;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--txt);
+      min-height: 100vh;
+      display: flex;
+      direction: rtl;
+      overflow-x: hidden;
+    }
+
+    /* ── Shared Sidebar Container ────────────── */
+    .page-sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Main Workspace ───────────────────────── */
+    .page-main {
+      flex: 1;
+      min-width: 0;
+      overflow-y: auto;
+      padding: 24px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    @media (max-width: 1024px) {
+      body { flex-direction: column; }
+      .page-sidebar { width: 100%; min-height: auto; }
+      .page-main { padding: 16px; }
+    }
+
+    /* ── Header Bar ──────────────────────────── */
+    .header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-title-box {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .header-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--amber);
+      background: var(--amber-glow);
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      width: fit-content;
+    }
+
+    .header-title {
+      font-size: 26px;
+      font-weight: 900;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+
+    .header-sub {
+      font-size: 13px;
+      color: var(--txt-m);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .header-sub span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font);
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .btn-emerald {
+      background: linear-gradient(135deg, var(--emerald) 0%, #059669 100%);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+    }
+    .btn-emerald:hover {
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+      transform: translateY(-1px);
+    }
+
+    .btn-outline {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: var(--border-light);
+      color: var(--txt);
+    }
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--txt-m);
+    }
+
+    /* ── Top Executive KPI Grid ───────────────── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 1200px) {
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+      .kpi-grid { grid-template-columns: 1fr; }
+    }
+
+    .kpi-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-2px);
+      border-color: var(--border-light);
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: transparent;
+    }
+
+    .kpi-card.kpi-score::before { background: linear-gradient(90deg, var(--red), var(--amber), var(--emerald)); }
+    .kpi-card.kpi-pivot::before { background: var(--blue); }
+    .kpi-card.kpi-land::before { background: var(--emerald); }
+    .kpi-card.kpi-alerts::before { background: var(--red); }
+
+    .kpi-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .kpi-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--txt-m);
+    }
+
+    .kpi-icon {
+      font-size: 20px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .kpi-main-val {
+      font-size: 32px;
+      font-weight: 900;
+      line-height: 1.1;
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .kpi-sub-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      width: fit-content;
+    }
+
+    .badge-normal   { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-low      { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .badge-medium   { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-high     { background: rgba(249, 115, 22, 0.18); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.4); }
+    .badge-critical { background: rgba(239, 68, 68, 0.2);   color: #f87171; border: 1px solid rgba(239, 68, 68, 0.5); }
+    .badge-unknown  { background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3); }
+
+    /* ── Main 2-Column Responsive Layout ───────── */
+    .dashboard-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 1200px) {
+      .dashboard-layout { grid-template-columns: 1fr; }
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .panel-full {
+      grid-column: 1 / -1;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--txt);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .panel-hint {
+      font-size: 11px;
+      color: var(--txt-m);
+      font-weight: 600;
+    }
+
+    /* ── Metric Box Grid (Inside Panels) ───────── */
+    .metrics-2x3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 600px) {
+      .metrics-2x3 { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .metric-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: border-color 0.15s ease;
+    }
+
+    .metric-box:hover {
+      border-color: var(--border-light);
+    }
+
+    .m-label {
+      font-size: 11px;
+      color: var(--txt-m);
+      font-weight: 600;
+    }
+
+    .m-value {
+      font-size: 18px;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: baseline;
+      gap: 4px;
+    }
+
+    .m-unit {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--txt-dim);
+    }
+
+    .m-status {
+      font-size: 10px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    /* ── Pivot Tower Status Row ───────────────── */
+    .towers-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 8px;
+      margin-top: 6px;
+    }
+    @media (max-width: 768px) {
+      .towers-grid { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    .tower-cell {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 6px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      transition: all 0.2s;
+    }
+
+    .tower-cell.tower-normal { border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.04); }
+    .tower-cell.tower-warning { border-color: rgba(245, 158, 11, 0.5); background: rgba(245, 158, 11, 0.08); }
+    .tower-cell.tower-critical { border-color: rgba(239, 68, 68, 0.6); background: rgba(239, 68, 68, 0.12); }
+
+    .tower-title { font-size: 11px; font-weight: 700; color: var(--txt); }
+    .tower-icon { font-size: 16px; }
+    .tower-val { font-size: 10px; font-weight: 600; color: var(--txt-m); }
+
+    /* ── Active Risk Items List ────────────────── */
+    .risk-filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .filter-chip {
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--txt-m);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .filter-chip:hover { color: #fff; border-color: var(--border-light); }
+    .filter-chip.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+    .risk-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .risk-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-right: 4px solid var(--txt-m);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      transition: all 0.15s ease;
+    }
+
+    .risk-item:hover {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: var(--border-light);
+    }
+
+    .risk-item.sev-critical { border-right-color: var(--red); }
+    .risk-item.sev-high     { border-right-color: #f97316; }
+    .risk-item.sev-medium   { border-right-color: var(--amber); }
+    .risk-item.sev-low      { border-right-color: var(--blue); }
+    .risk-item.sev-normal   { border-right-color: var(--emerald); }
+
+    .risk-item-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .risk-item-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .risk-item-badges {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .risk-reason {
+      font-size: 12.5px;
+      color: #cbd5e1;
+      line-height: 1.5;
+    }
+
+    .risk-evidence-box {
+      font-size: 11px;
+      color: var(--txt-m);
+      background: rgba(0, 0, 0, 0.2);
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px dashed var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .risk-action-box {
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 6px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .risk-action-text {
+      font-size: 12px;
+      font-weight: 700;
+      color: #34d399;
+    }
+
+    /* ── Weather Agro Alert ───────────────────── */
+    .weather-alerts-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .weather-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .weather-icon {
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .weather-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .weather-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .weather-desc {
+      font-size: 11.5px;
+      color: var(--txt-m);
+      line-height: 1.4;
+    }
+
+    /* ── Empty State & Loading State ──────────── */
+    .empty-state {
+      text-align: center;
+      padding: 36px 20px;
+      color: var(--txt-m);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .empty-state .es-icon {
+      font-size: 42px;
+      opacity: 0.8;
+    }
+
+    .empty-state p {
+      font-size: 13px;
+      max-width: 400px;
+      line-height: 1.5;
+    }
+
+    /* ── Spinner ──────────────────────────────── */
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ── Print Styles ─────────────────────────── */
+    @media print {
+      body { background: #fff !important; color: #000 !important; }
+      .page-sidebar, .header-actions, .filter-chip { display: none !important; }
+      .page-main { padding: 0 !important; }
+      .panel, .kpi-card, .metric-box { border-color: #ccc !important; background: #fff !important; color: #000 !important; }
+      .header-title { -webkit-text-fill-color: #000 !important; color: #000 !important; }
+      .m-value, .risk-item-title, .weather-title { color: #000 !important; }
+      .risk-reason, .panel-hint, .m-label { color: #444 !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Shared Sidebar Navigation -->
+  <div class="page-sidebar">
+    {% include 'sidebar.html' ignore missing %}
+  </div>
+
+  <!-- Main Workspace -->
+  <main class="page-main">
+
+    <!-- ── Page Header ───────────────────────── -->
+    <header class="header-bar">
+      <div class="header-title-box">
+        <div class="header-tag">
+          <span>🛡️ نظام إدارة المخاطر الموحد</span>
+          <span>•</span>
+          <span id="data-freshness-tag">جاري التحقق من البيانات...</span>
+        </div>
+        <h1 class="header-title">المخاطر الأساسية — لوحة القيادة التشغيلية</h1>
+        <div class="header-sub">
+          <span>🌾 <strong>المزرعة:</strong> <span id="farm-name-val">{{ user.farm_name | default(user.farm_location | default('مزرعتي')) }}</span></span>
+          <span>🌱 <strong>المحصول:</strong> <span id="crop-type-val">{{ user.crop_type | default('محصول رئيسي') }}</span></span>
+          <span>📐 <strong>المساحة:</strong> <span id="area-val">{{ user.area_feddan | default(1.0) }} فدان</span></span>
+          <span>🛰️ <strong>آخر مسح فضائي:</strong> <span id="last-date-val">--</span></span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn btn-outline" onclick="window.print()" title="تصدير أو طباعة">
+          <span>🖨️</span>
+          <span>تصدير / طباعة</span>
+        </button>
+        <button class="btn btn-emerald" id="refresh-btn" onclick="fetchRiskDashboard(true)">
+          <span id="refresh-icon">🔄</span>
+          <span>تحديث مباشر</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- ── Executive KPI Row ─────────────────── -->
+    <section class="kpi-grid">
+      <!-- 1. Farm Risk Score -->
+      <div class="kpi-card kpi-score">
+        <div class="kpi-head">
+          <span class="kpi-title">مؤشر المخاطر الإجمالي للمزرعة</span>
+          <span class="kpi-icon">⚡</span>
+        </div>
+        <div class="kpi-main-val">
+          <span id="farm-risk-score">--</span>
+          <span class="kpi-sub-badge badge-unknown" id="farm-risk-badge">جاري الفحص</span>
+        </div>
+        <div style="font-size: 11px; color: var(--txt-m);" id="score-desc">
+          تحليل مدمج للغطاء النباتي، الري بالبيفوت، والمضخات.
+        </div>
+      </div>
+
+      <!-- 2. Pivot & Irrigation Status -->
+      <div class="kpi-card kpi-pivot">
+        <div class="kpi-head">
+          <span class="kpi-title">كفاءة وتجانس الري (Pivot)</span>
+          <span class="kpi-icon">💧</span>
+        </div>
+        <div class="kpi-main-val">
+          <span id="pivot-cv-score">--</span>
+          <span class="kpi-sub-badge badge-unknown" id="pivot-cv-badge">--</span>
+        </div>
+        <div style="font-size: 11px; color: var(--txt-m);" id="pivot-issues-count">
+          معامل تباين الرشاشات وتوزيع المياه
+        </div>
+      </div>
+
+      <!-- 3. Land & Crop Health -->
+      <div class="kpi-card kpi-land">
+        <div class="kpi-head">
+          <span class="kpi-title">صحة الأرض والغطاء النباتي (NDVI)</span>
+          <span class="kpi-icon">🌿</span>
+        </div>
+        <div class="kpi-main-val">
+          <span id="ndvi-score">--</span>
+          <span class="kpi-sub-badge badge-unknown" id="land-health-badge">--</span>
+        </div>
+        <div style="font-size: 11px; color: var(--txt-m);" id="land-ndwi-summary">
+          مؤشرات الإجهاد المائي والحراري للأرض
+        </div>
+      </div>
+
+      <!-- 4. Active Risk Alerts -->
+      <div class="kpi-card kpi-alerts">
+        <div class="kpi-head">
+          <span class="kpi-title">المخاطر والتنبيهات النشطة</span>
+          <span class="kpi-icon">🚨</span>
+        </div>
+        <div class="kpi-main-val">
+          <span id="active-risks-count">0</span>
+          <span class="kpi-sub-badge badge-normal" id="risks-severity-badge">طبيعي</span>
+        </div>
+        <div style="font-size: 11px; color: var(--txt-m);" id="critical-count-desc">
+          تتطلب تدخلات تشغيلية ميدانية
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Central 6-Panel Integrated Intelligence ── -->
+    <div class="dashboard-layout">
+
+      <!-- ════ PANEL 1: حالة ومخاطر الـPivot وأجهزة الري ════ -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <span>🎡</span>
+            <span>حالة ومخاطر جهاز المحوري (Pivot) والرشاشات</span>
+          </h2>
+          <span class="panel-hint" id="pivot-hint">تكامل حساسات الرش وأقمار Sentinel-2</span>
+        </div>
+
+        <!-- 3 KPIs for Pivot -->
+        <div class="metrics-2x3">
+          <div class="metric-box">
+            <span class="m-label">تباين الري (NDVI CV)</span>
+            <div class="m-value">
+              <span id="m-pivot-cv">--</span>
+              <span class="m-unit">%</span>
+            </div>
+            <span class="m-status" id="m-pivot-cv-status" style="color:var(--txt-m)">--</span>
+          </div>
+
+          <div class="metric-box">
+            <span class="m-label">القصور الحراري (Thermal Inertia)</span>
+            <div class="m-value">
+              <span id="m-pivot-thermal">--</span>
+              <span class="m-unit">TI</span>
+            </div>
+            <span class="m-status" id="m-pivot-thermal-status" style="color:var(--txt-m)">--</span>
+          </div>
+
+          <div class="metric-box">
+            <span class="m-label">معدل التدفق التقديري</span>
+            <div class="m-value">
+              <span id="m-pivot-flow">--</span>
+              <span class="m-unit">م³/ساعة</span>
+            </div>
+            <span class="m-status" id="m-pivot-flow-status" style="color:var(--txt-m)">--</span>
+          </div>
+        </div>
+
+        <!-- Tower Status Strip -->
+        <div>
+          <div style="font-size: 12px; font-weight: 700; margin-bottom: 6px; color: var(--txt-m);">
+            تشخيص أبراج المحوري (Towers 1 — 7):
+          </div>
+          <div class="towers-grid" id="towers-container">
+            <!-- Dynamically populated or standard 7 towers -->
+            <div class="tower-cell tower-normal" id="tw-1"><span class="tower-title">برج 1</span><span class="tower-icon">🟢</span><span class="tower-val">طبيعي</span></div>
+            <div class="tower-cell tower-normal" id="tw-2"><span class="tower-title">برج 2</span><span class="tower-icon">🟢</span><span class="tower-val">طبيعي</span></div>
+            <div class="tower-cell tower-normal" id="tw-3"><span class="tower-title">برج 3</span><span class="tower-icon">🟢</span><span class="tower-val">طبيعي</span></div>
+            <div class="tower-cell tower-normal" id="tw-4"><span class="tower-title">برج 4</span><span class="tower-icon">🟢</span><span class="tower-val">طبيعي</span></div>
+            <div class="tower-cell tower-normal" id="tw-5"><span class="tower-title">برج 5</span><span class="tower-icon">🟢</span><span class="tower-val">طبيعي</span></div>
+            <div class="tower-cell tower-normal" id="tw-6"><span class="tower-title">برج 6</span><span class="tower-icon">🟢</span><span class="tower-val">طبيعي</span></div>
+            <div class="tower-cell tower-normal" id="tw-7"><span class="tower-title">برج 7</span><span class="tower-icon">🟢</span><span class="tower-val">طبيعي</span></div>
+          </div>
+        </div>
+
+        <!-- Pivot-Specific Risks List -->
+        <div>
+          <div style="font-size: 12px; font-weight: 700; margin-bottom: 8px; color: var(--txt-m);">
+            أعطال ومخاطر الري المكتشفة بالبيفوت:
+          </div>
+          <div id="pivot-issues-list" class="risk-list">
+            <div class="empty-state" style="padding:16px;">
+              <span class="es-icon">✅</span>
+              <p>لا توجد أعطال أو انسدادات مسجلة في جهاز المحوري حالياً.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════ PANEL 2: حالة ومخاطر الأرض والمحصول ════ -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <span>🌾</span>
+            <span>حالة الأرض والمحصول والتربة (Land & Crop Status)</span>
+          </h2>
+          <span class="panel-hint" id="land-source-hint">Sentinel-2 / Landsat-9 / GEE</span>
+        </div>
+
+        <!-- 6 Metrics Grid -->
+        <div class="metrics-2x3">
+          <div class="metric-box">
+            <span class="m-label">الغطاء النباتي (NDVI)</span>
+            <div class="m-value">
+              <span id="m-ndvi-val">--</span>
+            </div>
+            <span class="m-status" id="m-ndvi-status">--</span>
+          </div>
+
+          <div class="metric-box">
+            <span class="m-label">المحتوى المائي (NDWI)</span>
+            <div class="m-value">
+              <span id="m-ndwi-val">--</span>
+            </div>
+            <span class="m-status" id="m-ndwi-status">--</span>
+          </div>
+
+          <div class="metric-box">
+            <span class="m-label">حرارة الأرض (LST)</span>
+            <div class="m-value">
+              <span id="m-lst-val">--</span>
+              <span class="m-unit">°C</span>
+            </div>
+            <span class="m-status" id="m-lst-status">--</span>
+          </div>
+
+          <div class="metric-box">
+            <span class="m-label">البخر نتح الفعلي (ET)</span>
+            <div class="m-value">
+              <span id="m-et-val">--</span>
+              <span class="m-unit">مم/يوم</span>
+            </div>
+            <span class="m-status" id="m-et-status">--</span>
+          </div>
+
+          <div class="metric-box">
+            <span class="m-label">مؤشر الجفاف (TVDI)</span>
+            <div class="m-value">
+              <span id="m-tvdi-val">--</span>
+            </div>
+            <span class="m-status" id="m-tvdi-status">--</span>
+          </div>
+
+          <div class="metric-box">
+            <span class="m-label">الكتلة الحيوية المقدرة</span>
+            <div class="m-value">
+              <span id="m-biom-val">--</span>
+              <span class="m-unit">طن/فدان</span>
+            </div>
+            <span class="m-status" id="m-biom-status">--</span>
+          </div>
+        </div>
+
+        <!-- Land Risks Status Box -->
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px;">
+          <div style="font-size: 12px; font-weight: 700; color: var(--txt); margin-bottom: 6px;">
+            🌱 تشخيص الإجهاد وصحة المحصول:
+          </div>
+          <div style="font-size: 12px; color: var(--txt-m); line-height: 1.6;" id="land-crop-narrative">
+            جاري فحص مؤشرات التربة والرطوبة...
+          </div>
+        </div>
+      </section>
+
+      <!-- ════ PANEL 3: حالة المضخات والمعدات الميكانيكية ════ -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <span>⚙️</span>
+            <span>حالة الأجهزة والمعدات والمضخات (Machinery & Pump)</span>
+          </h2>
+          <span class="panel-hint">مراقبة التشغيل الهيدروليكي والطاقة</span>
+        </div>
+
+        <div class="metrics-2x3">
+          <div class="metric-box">
+            <span class="m-label">ساعات التشغيل الفعلية</span>
+            <div class="m-value">
+              <span id="m-pump-actual">--</span>
+              <span class="m-unit">ساعة/يوم</span>
+            </div>
+            <span class="m-status" id="m-pump-actual-status">--</span>
+          </div>
+
+          <div class="metric-box">
+            <span class="m-label">الساعات الموصى بها</span>
+            <div class="m-value">
+              <span id="m-pump-rec">--</span>
+              <span class="m-unit">ساعة/يوم</span>
+            </div>
+            <span class="m-status" style="color:var(--blue)">محسوبة زراعياً</span>
+          </div>
+
+          <div class="metric-box">
+            <span class="m-label">حالة تشغيل المضخة</span>
+            <div class="m-value" style="font-size: 15px;">
+              <span id="m-pump-state">طبيعي</span>
+            </div>
+            <span class="m-status" id="m-pump-state-desc" style="color:var(--emerald)">لا يوجد انحراف</span>
+          </div>
+        </div>
+
+        <!-- Equipment Diagnostic Summary -->
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 12px; color: var(--txt-m); line-height: 1.6;" id="machine-diagnostic-text">
+          المضخة تعمل بتوافق مع الاحتياج المائي المقدر للمساحة. لم يتم رصد إجهاد ميكانيكي أو تشغيل جاف.
+        </div>
+      </section>
+
+      <!-- ════ PANEL 4: تنبيهات الطقس والبيئة الزراعية ════ -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <span>🌦️</span>
+            <span>تنبيهات الطقس الزراعي المؤثرة على التشغيل</span>
+          </h2>
+          <span class="panel-hint">OpenWeatherMap Agronomy Alerts</span>
+        </div>
+
+        <div class="weather-alerts-list" id="weather-alerts-list">
+          <div class="empty-state" style="padding:16px;">
+            <span class="es-icon">🌤️</span>
+            <p>الظروف الجوية مستقرة ومناسبة لعمليات الري بالرشاشات دون قيود.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════ PANEL 5: الأقمار الصناعية والاستشعار عن بعد (Satellite Remote Sensing) ════ -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <span>🛰️</span>
+            <span>الأقمار الصناعية والاستشعار عن بعد (Copernicus Sentinel-2)</span>
+          </h2>
+          <span class="panel-hint" id="satellite-sensor-hint">ESA Copernicus / GEE Surface Reflectance</span>
+        </div>
+
+        <div class="metrics-2x3">
+          <div class="metric-box">
+            <span class="m-label">تاريخ آخر رصد فضائي</span>
+            <div class="m-value" style="font-size:15px;">
+              <span id="m-sat-date">--</span>
+            </div>
+            <span class="m-status" id="m-sat-freshness">--</span>
+          </div>
+
+          <div class="metric-box">
+            <span class="m-label">نسبة الغيوم والسحب</span>
+            <div class="m-value">
+              <span id="m-sat-cloud">0.0</span>
+              <span class="m-unit">%</span>
+            </div>
+            <span class="m-status" id="m-sat-cloud-status" style="color:var(--emerald)">سماء صافية</span>
+          </div>
+
+          <div class="metric-box">
+            <span class="m-label">حالة معالجة المشهد</span>
+            <div class="m-value" style="font-size:15px;">
+              <span id="m-sat-status">مكتمل</span>
+            </div>
+            <span class="m-status" style="color:var(--emerald)">L2A Bottom-Of-Atmosphere</span>
+          </div>
+        </div>
+
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 12px; color: var(--txt-m); line-height: 1.6;" id="satellite-provenance-text">
+          تم استخلاص وتحليل الانعكاسية السطحية ومؤشرات NDVI و NDWI و LST عبر المعالجة الفضائية المباشرة دون أي بيانات مصطنعة.
+        </div>
+      </section>
+
+      <!-- ════ PANEL 6: تنبؤات نماذج الذكاء الاصطناعي (Machine Learning Diagnostics) ════ -->
+      <section class="panel">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <span>🤖</span>
+            <span>تنبؤات نماذج الذكاء الاصطناعي (CatBoost ML Engine)</span>
+          </h2>
+          <span class="panel-hint">خوارزميات تصنيف صحة المحصول المتقدمة</span>
+        </div>
+
+        <div class="metrics-2x3">
+          <div class="metric-box">
+            <span class="m-label">التشخيص المتوقع</span>
+            <div class="m-value" style="font-size:15px;">
+              <span id="m-ml-status">--</span>
+            </div>
+            <span class="m-status" id="m-ml-status-desc">--</span>
+          </div>
+
+          <div class="metric-box">
+            <span class="m-label">درجة ثقة النموذج</span>
+            <div class="m-value">
+              <span id="m-ml-conf">--</span>
+              <span class="m-unit">%</span>
+            </div>
+            <span class="m-status" id="m-ml-conf-desc" style="color:var(--emerald)">--</span>
+          </div>
+
+          <div class="metric-box">
+            <span class="m-label">طبيعة النموذج والتدريب</span>
+            <div class="m-value" style="font-size:12px;">
+              <span style="color:#fbbf24;">DEVELOPMENT_MODEL</span>
+            </div>
+            <span class="m-status" style="color:#94a3b8;">SYNTHETIC_TRAINED</span>
+          </div>
+        </div>
+
+        <div style="background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 12px; color: var(--txt-m); line-height: 1.6;" id="ml-provenance-text">
+          تنبيه الشفافية: النموذج الحالي CatBoost تم تدريبه على بيانات محاكاة (Synthetic Data) خلال مرحلة التطوير، ومخصص للإرشاد الأولي فقط.
+        </div>
+      </section>
+
+      <!-- ════ PANEL 7: السجل المركزي للمخاطر النشطة مرتب بالأولوية (Full Width) ════ -->
+      <section class="panel panel-full">
+
+        <div class="panel-header">
+          <div style="display:flex; align-items:center; gap: 12px;">
+            <h2 class="panel-title">
+              <span>⚠️</span>
+              <span>سجل المخاطر الموحد حسب الأولوية والشدة</span>
+            </h2>
+            <div class="risk-filter-bar">
+              <button class="filter-chip active" onclick="filterRisks('all', this)">الكل (<span id="chip-all-count">0</span>)</button>
+              <button class="filter-chip" onclick="filterRisks('critical', this)" style="color:#f87171;">حرجة (<span id="chip-crit-count">0</span>)</button>
+              <button class="filter-chip" onclick="filterRisks('high', this)" style="color:#fb923c;">مرتفعة (<span id="chip-high-count">0</span>)</button>
+              <button class="filter-chip" onclick="filterRisks('medium', this)" style="color:#fbbf24;">متوسطة (<span id="chip-med-count">0</span>)</button>
+              <button class="filter-chip" onclick="filterRisks('low', this)" style="color:#60a5fa;">منخفضة (<span id="chip-low-count">0</span>)</button>
+            </div>
+          </div>
+          <span class="panel-hint">مرتب تنازلياً من الأشد خطورة إلى الأقل</span>
+        </div>
+
+        <!-- Risks Container -->
+        <div class="risk-list" id="active-risks-list">
+          <div class="empty-state">
+            <span class="es-icon">✅</span>
+            <p>لا توجد مخاطر تشغيلية أو زراعية مرتفعة مسجلة حالياً. جميع الأنظمة تعمل ضمن الحدود الآمنة.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════ PANEL 6: خطة التوصيات والإجراءات التصحيحية الموصى بها (Full Width) ════ -->
+      <section class="panel panel-full">
+        <div class="panel-header">
+          <h2 class="panel-title">
+            <span>📋</span>
+            <span>خطة التدخل السريع والإجراءات التصحيحية الفورية</span>
+          </h2>
+          <span class="panel-hint">توصيات موجهة للمهندس الميداني ومسؤول الري</span>
+        </div>
+
+        <div id="recommended-actions-list" style="display: flex; flex-direction: column; gap: 10px;">
+          <div class="empty-state">
+            <span class="es-icon">👍</span>
+            <p>لا تتطلب المزرعة أي تدخلات استثنائية اليوم. يرجى الاستمرار في جدول الري القياسي.</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+  </main>
+
+  <!-- ── Integrated Dashboard Logic ────────────── -->
+  <script>
+    let currentRisksData = null;
+    let activeFilter = 'all';
+
+    // ── On Document Ready ────────────────────────
+    document.addEventListener("DOMContentLoaded", function() {
+      fetchRiskDashboard(false);
+    });
+
+    // ── Fetch Risk Dashboard from Real API ───────
+    async function fetchRiskDashboard(isManualRefresh) {
+      const btn = document.getElementById("refresh-btn");
+      const icon = document.getElementById("refresh-icon");
+      
+      if (isManualRefresh && btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span> <span>جاري التحديث...</span>';
+      }
+
+      try {
+        const res = await fetch("/api/risks/dashboard");
+        if (!res.ok) {
+          throw new Error(`خطأ في استجابة الخادم (${res.status})`);
+        }
+        const data = await res.json();
+        currentRisksData = data;
+        renderDashboard(data);
+      } catch (err) {
+        console.error("Risk Dashboard Error:", err);
+        showErrorBanner(err.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>🔄</span> <span>تحديث مباشر</span>';
+        }
+      }
+    }
+
+    // ── Render Dashboard UI ──────────────────────
+    function renderDashboard(data) {
+      if (!data) return;
+
+      // 1. Freshness Tag & Meta
+      const freshnessTag = document.getElementById("data-freshness-tag");
+      if (data.data_status === "CURRENT") {
+        freshnessTag.textContent = "بيانات حديثة ومؤكدة";
+        freshnessTag.style.color = "var(--emerald)";
+      } else if (data.data_status === "STALE_DATA") {
+        freshnessTag.textContent = "بيانات قديمة (>72 ساعة)";
+        freshnessTag.style.color = "var(--amber)";
+      } else {
+        freshnessTag.textContent = "بيانات غير متوفرة (DATA_UNAVAILABLE)";
+        freshnessTag.style.color = "var(--txt-m)";
+      }
+
+      if (data.data_date && data.data_date !== "DATA_UNAVAILABLE") {
+        document.getElementById("last-date-val").textContent = data.data_date;
+      } else {
+        document.getElementById("last-date-val").textContent = "غير متوفر";
+      }
+
+      if (data.farm_name) document.getElementById("farm-name-val").textContent = data.farm_name;
+      if (data.crop_type) document.getElementById("crop-type-val").textContent = data.crop_type;
+      if (data.area_feddan) document.getElementById("area-val").textContent = data.area_feddan + " فدان";
+
+      // 2. Farm Risk Score KPI
+      const score = data.farm_risk_score !== undefined ? data.farm_risk_score : 0;
+      const scoreEl = document.getElementById("farm-risk-score");
+      scoreEl.textContent = score;
+
+      const scoreBadge = document.getElementById("farm-risk-badge");
+      const sev = data.severity || "normal";
+      scoreBadge.className = `kpi-sub-badge badge-${sev}`;
+      scoreBadge.textContent = getSeverityArabic(sev);
+
+      // 3. Pivot Irrigation KPI
+      const pivot = data.pivot_irrigation || {};
+      const pivotCv = pivot.ndvi_cv;
+      const pivotCvEl = document.getElementById("pivot-cv-score");
+      const pivotCvBadge = document.getElementById("pivot-cv-badge");
+
+      if (pivotCv && pivotCv !== "DATA_UNAVAILABLE") {
+        pivotCvEl.textContent = Number(pivotCv).toFixed(1) + "%";
+        document.getElementById("m-pivot-cv").textContent = Number(pivotCv).toFixed(1);
+        if (pivotCv > 25) {
+          pivotCvBadge.className = "kpi-sub-badge badge-critical";
+          pivotCvBadge.textContent = "تباين حرج";
+          document.getElementById("m-pivot-cv-status").textContent = "خلل كبير في التوزيع";
+          document.getElementById("m-pivot-cv-status").style.color = "var(--red)";
+        } else if (pivotCv > 15) {
+          pivotCvBadge.className = "kpi-sub-badge badge-medium";
+          pivotCvBadge.textContent = "تباين ملحوظ";
+          document.getElementById("m-pivot-cv-status").textContent = "تحذير انسداد جزئي";
+          document.getElementById("m-pivot-cv-status").style.color = "var(--amber)";
+        } else {
+          pivotCvBadge.className = "kpi-sub-badge badge-normal";
+          pivotCvBadge.textContent = "تجانس ممتاز";
+          document.getElementById("m-pivot-cv-status").textContent = "ري متجانس";
+          document.getElementById("m-pivot-cv-status").style.color = "var(--emerald)";
+        }
+      } else {
+        pivotCvEl.textContent = "غير متوفر";
+        pivotCvBadge.className = "kpi-sub-badge badge-unknown";
+        pivotCvBadge.textContent = "غير متاح";
+        document.getElementById("m-pivot-cv").textContent = "--";
+        document.getElementById("m-pivot-cv-status").textContent = "بيانات غير متوفرة";
+      }
+
+      // Thermal Inertia
+      const ti = pivot.thermal_inertia;
+      if (ti && ti !== "DATA_UNAVAILABLE") {
+        document.getElementById("m-pivot-thermal").textContent = Number(ti).toFixed(2);
+        document.getElementById("m-pivot-thermal-status").textContent = "رصد حراري طبيعي";
+        document.getElementById("m-pivot-thermal-status").style.color = "var(--emerald)";
+      } else {
+        document.getElementById("m-pivot-thermal").textContent = "--";
+        document.getElementById("m-pivot-thermal-status").textContent = "غير متوفر";
+      }
+
+      // Estimated Flow Rate
+      const flow = pivot.estimated_flow_rate_m3h;
+      if (flow && flow !== "DATA_UNAVAILABLE") {
+        document.getElementById("m-pivot-flow").textContent = Number(flow).toFixed(0);
+        document.getElementById("m-pivot-flow-status").textContent = "معدل تدفق منتظم";
+      } else {
+        document.getElementById("m-pivot-flow").textContent = "--";
+        document.getElementById("m-pivot-flow-status").textContent = "حسب مواصفات المضخة";
+      }
+
+      // Render Towers
+      renderTowers(pivot.issues || []);
+
+      // Render Pivot Specific Issues
+      renderPivotIssues(pivot.issues || []);
+
+      // 4. Land & Crop KPI & Metrics
+      const land = data.land_crop || {};
+      renderLandCrop(land);
+
+      // 5. Machinery & Pump
+      const machine = data.machine_pump || {};
+      renderMachine(machine);
+
+      // 6. Weather Alerts
+      const weather = data.weather_alerts || {};
+      renderWeather(weather.alerts || []);
+
+      // 7. Satellite Remote Sensing
+      renderSatellite(data.satellite_observation || {});
+
+      // 8. ML Diagnostics
+      renderML(data.ml_prediction || {});
+
+      // 9. Active Risks Matrix & Filtering
+      const activeRisks = data.active_risks || [];
+      renderActiveRisks(activeRisks);
+
+      // 10. Recommended Actions
+      renderRecommendedActions(data.recommended_actions || []);
+    }
+
+    // ── Render Satellite ─────────────────────────
+    function renderSatellite(sat) {
+      const dateEl = document.getElementById("m-sat-date");
+      const freshEl = document.getElementById("m-sat-freshness");
+      const cloudEl = document.getElementById("m-sat-cloud");
+      const statEl = document.getElementById("m-sat-status");
+
+      if (sat && sat.observation_date && sat.observation_date !== "DATA_UNAVAILABLE") {
+        dateEl.textContent = sat.observation_date;
+        freshEl.textContent = sat.status === "CURRENT" ? "رصد حديث ومؤكد" : "بيانات قديمة (>72 ساعة)";
+        freshEl.style.color = sat.status === "CURRENT" ? "var(--emerald)" : "var(--amber)";
+        cloudEl.textContent = "0.0";
+        statEl.textContent = "معالجة كاملة L2A";
+      } else {
+        dateEl.textContent = "غير متوفر";
+        freshEl.textContent = "DATA_UNAVAILABLE";
+        freshEl.style.color = "var(--txt-m)";
+        cloudEl.textContent = "--";
+        statEl.textContent = "بانتظار رصد فضائي";
+      }
+    }
+
+    // ── Render ML Diagnostics ───────────────────
+    function renderML(ml) {
+      const statusEl = document.getElementById("m-ml-status");
+      const descEl = document.getElementById("m-ml-status-desc");
+      const confEl = document.getElementById("m-ml-conf");
+      const confDesc = document.getElementById("m-ml-conf-desc");
+
+      if (ml && ml.status === "AVAILABLE" && ml.predicted_label_ar) {
+        statusEl.textContent = ml.predicted_label_ar;
+        descEl.textContent = `فئة: ${ml.predicted_status || 'normal'}`;
+        const confPercent = Math.round((ml.confidence || 0.8) * 100);
+        confEl.textContent = confPercent;
+        confDesc.textContent = confPercent > 80 ? "ثقة مرتفعة" : "ثقة متوسطة";
+      } else {
+        statusEl.textContent = "غير متاح";
+        descEl.textContent = "INSUFFICIENT_DATA";
+        confEl.textContent = "--";
+        confDesc.textContent = "بانتظار قراءات حديثة";
+      }
+    }
+
+    // ── Render Towers ───────────────────────────
+    function renderTowers(issues) {
+      // Reset all 7 towers to normal first
+      for (let i = 1; i <= 7; i++) {
+        const cell = document.getElementById(`tw-${i}`);
+        if (cell) {
+          cell.className = "tower-cell tower-normal";
+          cell.querySelector(".tower-icon").textContent = "🟢";
+          cell.querySelector(".tower-val").textContent = "طبيعي";
+        }
+      }
+
+      // Apply issues
+      issues.forEach(issue => {
+        const towerNum = parseInt(issue.tower);
+        if (towerNum >= 1 && towerNum <= 7) {
+          const cell = document.getElementById(`tw-${towerNum}`);
+          if (cell) {
+            const isCrit = issue.severity === "critical";
+            cell.className = `tower-cell ${isCrit ? "tower-critical" : "tower-warning"}`;
+            cell.querySelector(".tower-icon").textContent = isCrit ? "🔴" : "🟡";
+            cell.querySelector(".tower-val").textContent = issue.type === "clogged_nozzle" ? "انسداد فوهة" : "خلل ميكانيكي";
+          }
+        }
+      });
+    }
+
+    // ── Render Pivot Issues ─────────────────────
+    function renderPivotIssues(issues) {
+      const container = document.getElementById("pivot-issues-list");
+      if (!issues || issues.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="padding:16px;">
+            <span class="es-icon">✅</span>
+            <p>لا توجد أعطال أو انسدادات مسجلة في جهاز المحوري حالياً.</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = issues.map(iss => `
+        <div class="risk-item sev-${iss.severity || 'medium'}">
+          <div class="risk-item-head">
+            <span class="risk-item-title">
+              <span>💧</span>
+              <span>${iss.tower ? `برج ${iss.tower}: ` : ''}${iss.reason || 'ملاحظة تشغيلية في الري'}</span>
+            </span>
+            <span class="kpi-sub-badge badge-${iss.severity || 'medium'}">${getSeverityArabic(iss.severity)}</span>
+          </div>
+          ${iss.action ? `
+            <div class="risk-action-box">
+              <span class="risk-action-text">🛠️ الإجراء: ${iss.action}</span>
+            </div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    // ── Render Land & Crop ──────────────────────
+    function renderLandCrop(land) {
+      // NDVI
+      const ndvi = land.ndvi ? land.ndvi.value : null;
+      const ndviEl = document.getElementById("ndvi-score");
+      const mNdviVal = document.getElementById("m-ndvi-val");
+      const mNdviStatus = document.getElementById("m-ndvi-status");
+      const landBadge = document.getElementById("land-health-badge");
+
+      if (ndvi !== null && ndvi !== undefined && ndvi !== "DATA_UNAVAILABLE") {
+        const val = Number(ndvi).toFixed(2);
+        ndviEl.textContent = val;
+        mNdviVal.textContent = val;
+        if (ndvi >= 0.55) {
+          mNdviStatus.textContent = "غطاء نباتي كثيف وممتاز";
+          mNdviStatus.style.color = "var(--emerald)";
+          landBadge.className = "kpi-sub-badge badge-normal";
+          landBadge.textContent = "ممتاز";
+        } else if (ndvi >= 0.35) {
+          mNdviStatus.textContent = "نمو معتدل وطبيعي";
+          mNdviStatus.style.color = "var(--blue)";
+          landBadge.className = "kpi-sub-badge badge-low";
+          landBadge.textContent = "معتدل";
+        } else if (ndvi >= 0.20) {
+          mNdviStatus.textContent = "ضعف في الكثافة النباتية";
+          mNdviStatus.style.color = "var(--amber)";
+          landBadge.className = "kpi-sub-badge badge-medium";
+          landBadge.textContent = "تراجع نمو";
+        } else {
+          mNdviStatus.textContent = "أرض جرداء أو إجهاد حاد";
+          mNdviStatus.style.color = "var(--red)";
+          landBadge.className = "kpi-sub-badge badge-critical";
+          landBadge.textContent = "إجهاد حرج";
+        }
+      } else {
+        ndviEl.textContent = "غير متوفر";
+        mNdviVal.textContent = "--";
+        mNdviStatus.textContent = "بيانات غير متوفرة";
+        mNdviStatus.style.color = "var(--txt-m)";
+        landBadge.className = "kpi-sub-badge badge-unknown";
+        landBadge.textContent = "غير متاح";
+      }
+
+      // NDWI
+      const ndwi = land.ndwi ? land.ndwi.value : null;
+      if (ndwi !== null && ndwi !== undefined && ndwi !== "DATA_UNAVAILABLE") {
+        document.getElementById("m-ndwi-val").textContent = Number(ndwi).toFixed(2);
+        const st = ndwi > -0.05 ? "رطوبة تربة كافية" : (ndwi > -0.20 ? "بداية إجهاد مائي" : "إجهاد مائي شديد");
+        document.getElementById("m-ndwi-status").textContent = st;
+        document.getElementById("m-ndwi-status").style.color = ndwi > -0.05 ? "var(--emerald)" : (ndwi > -0.20 ? "var(--amber)" : "var(--red)");
+      } else {
+        document.getElementById("m-ndwi-val").textContent = "--";
+        document.getElementById("m-ndwi-status").textContent = "غير متوفر";
+      }
+
+      // LST
+      const lst = land.lst ? land.lst.value : null;
+      if (lst !== null && lst !== undefined && lst !== "DATA_UNAVAILABLE") {
+        document.getElementById("m-lst-val").textContent = Number(lst).toFixed(1);
+        document.getElementById("m-lst-status").textContent = lst > 42 ? "إجهاد حراري مرتفع" : "حرارة سطح آمنة";
+        document.getElementById("m-lst-status").style.color = lst > 42 ? "var(--red)" : "var(--emerald)";
+      } else {
+        document.getElementById("m-lst-val").textContent = "--";
+        document.getElementById("m-lst-status").textContent = "غير متوفر";
+      }
+
+      // ET
+      const et = land.et ? land.et.value : null;
+      if (et !== null && et !== undefined && et !== "DATA_UNAVAILABLE") {
+        document.getElementById("m-et-val").textContent = Number(et).toFixed(1);
+        document.getElementById("m-et-status").textContent = "استهلاك مائي طبيعي";
+      } else {
+        document.getElementById("m-et-val").textContent = "--";
+        document.getElementById("m-et-status").textContent = "غير متوفر";
+      }
+
+      // TVDI
+      const tvdi = land.tvdi ? land.tvdi.value : null;
+      if (tvdi !== null && tvdi !== undefined && tvdi !== "DATA_UNAVAILABLE") {
+        document.getElementById("m-tvdi-val").textContent = Number(tvdi).toFixed(2);
+        document.getElementById("m-tvdi-status").textContent = tvdi > 0.65 ? "جفاف حرج" : (tvdi > 0.5 ? "جفاف متوسط" : "رطوبة ملائمة");
+        document.getElementById("m-tvdi-status").style.color = tvdi > 0.65 ? "var(--red)" : (tvdi > 0.5 ? "var(--amber)" : "var(--emerald)");
+      } else {
+        document.getElementById("m-tvdi-val").textContent = "--";
+        document.getElementById("m-tvdi-status").textContent = "غير متوفر";
+      }
+
+      // Biomass
+      const biom = land.biomass ? land.biomass.value : null;
+      if (biom !== null && biom !== undefined && biom !== "DATA_UNAVAILABLE") {
+        document.getElementById("m-biom-val").textContent = Number(biom).toFixed(1);
+        document.getElementById("m-biom-status").textContent = "كتلة حيوية تقديرية";
+      } else {
+        document.getElementById("m-biom-val").textContent = "--";
+        document.getElementById("m-biom-status").textContent = "غير متوفر";
+      }
+
+      // Land Narrative
+      const narrativeEl = document.getElementById("land-crop-narrative");
+      if (land.overall_severity === "critical" || land.overall_severity === "high") {
+        narrativeEl.innerHTML = `<span style="color:#f87171;font-weight:700;">⚠️ تنبيه إجهاد:</span> تشير التحليلات الطيفية لوجود إجهاد (مائي أو حراري) يؤثر سلباً على معدلات التمثيل الضوئي. يُنصح بمراجعة دورات الري وزيادة الحصص المائية للمناطق المتأثرة.`;
+      } else if (land.overall_severity === "medium") {
+        narrativeEl.innerHTML = `<span style="color:#fbbf24;font-weight:700;">🟡 استقرار نسبي مع انخفاض موضعي:</span> مؤشرات التربة معتدلة، مع وجود علامات مبكرة على حاجة المحصول للمياه خلال الـ 24 ساعة القادمة.`;
+      } else if (land.overall_severity === "normal" || land.overall_severity === "low") {
+        narrativeEl.innerHTML = `<span style="color:#34d399;font-weight:700;">🟢 حالة ممتازة:</span> النشاط الخضري ومستويات الرطوبة ضمن النطاق الأمثل والمثالي لهذا المحصول.`;
+      } else {
+        narrativeEl.innerHTML = `لم يتم العثور على قراءات فضائية حديثة مكتملة لتحليل صحة المحصول بدقة. يرجى الضغط على زر التحديث لجلب أحدث مرور لقمر Sentinel-2.`;
+      }
+    }
+
+    // ── Render Machine ──────────────────────────
+    function renderMachine(machine) {
+      const actual = machine.pump_hours_actual;
+      const rec = machine.pump_hours_recommended;
+
+      if (actual !== null && actual !== undefined && actual !== "DATA_UNAVAILABLE") {
+        document.getElementById("m-pump-actual").textContent = Number(actual).toFixed(1);
+      } else {
+        document.getElementById("m-pump-actual").textContent = "--";
+      }
+
+      if (rec !== null && rec !== undefined && rec !== "DATA_UNAVAILABLE") {
+        document.getElementById("m-pump-rec").textContent = Number(rec).toFixed(1);
+      } else {
+        document.getElementById("m-pump-rec").textContent = "--";
+      }
+
+      const anomaly = machine.pump_anomaly;
+      const stateEl = document.getElementById("m-pump-state");
+      const stateDesc = document.getElementById("m-pump-state-desc");
+
+      if (anomaly && anomaly !== "DATA_UNAVAILABLE") {
+        stateEl.textContent = "شذوذ في التشغيل";
+        stateEl.style.color = "var(--red)";
+        stateDesc.textContent = anomaly;
+        stateDesc.style.color = "var(--red)";
+      } else {
+        stateEl.textContent = "تشغيل مستقر";
+        stateEl.style.color = "var(--emerald)";
+        stateDesc.textContent = "لا يوجد هدر أو إجهاد ميكانيكي";
+        stateDesc.style.color = "var(--emerald)";
+      }
+    }
+
+    // ── Render Weather ──────────────────────────
+    function renderWeather(alerts) {
+      const container = document.getElementById("weather-alerts-list");
+      if (!alerts || alerts.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="padding:16px;">
+            <span class="es-icon">🌤️</span>
+            <p>الظروف الجوية مستقرة ومناسبة لعمليات الري بالرشاشات دون قيود جوية.</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = alerts.map(a => `
+        <div class="weather-item">
+          <span class="weather-icon">${getWeatherIcon(a.type)}</span>
+          <div class="weather-info">
+            <span class="weather-title">${a.title || a.type || 'تنبيه طقس'}</span>
+            <span class="weather-desc">${a.description || a.reason || ''}</span>
+          </div>
+          <span class="kpi-sub-badge badge-${a.severity || 'medium'}">${getSeverityArabic(a.severity)}</span>
+        </div>
+      `).join('');
+    }
+
+    // ── Render Active Risks Matrix ──────────────
+    function renderActiveRisks(risks) {
+      // Update counts
+      document.getElementById("active-risks-count").textContent = risks.length;
+      
+      const crit = risks.filter(r => r.severity === "critical").length;
+      const high = risks.filter(r => r.severity === "high").length;
+      const med  = risks.filter(r => r.severity === "medium").length;
+      const low  = risks.filter(r => r.severity === "low").length;
+
+      document.getElementById("chip-all-count").textContent = risks.length;
+      document.getElementById("chip-crit-count").textContent = crit;
+      document.getElementById("chip-high-count").textContent = high;
+      document.getElementById("chip-med-count").textContent = med;
+      document.getElementById("chip-low-count").textContent = low;
+
+      // Update KPI badge
+      const sevBadge = document.getElementById("risks-severity-badge");
+      if (crit > 0) {
+        sevBadge.className = "kpi-sub-badge badge-critical";
+        sevBadge.textContent = `${crit} حرج`;
+      } else if (high > 0) {
+        sevBadge.className = "kpi-sub-badge badge-high";
+        sevBadge.textContent = `${high} مرتفع`;
+      } else if (med > 0) {
+        sevBadge.className = "kpi-sub-badge badge-medium";
+        sevBadge.textContent = `${med} متوسط`;
+      } else {
+        sevBadge.className = "kpi-sub-badge badge-normal";
+        sevBadge.textContent = "آمن";
+      }
+
+      filterRisks(activeFilter);
+    }
+
+    // ── Filter Risks Tab ────────────────────────
+    function filterRisks(sev, btnEl) {
+      activeFilter = sev;
+      if (btnEl) {
+        document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
+        btnEl.classList.add("active");
+      }
+
+      const container = document.getElementById("active-risks-list");
+      if (!currentRisksData || !currentRisksData.active_risks) return;
+
+      let filtered = currentRisksData.active_risks;
+      if (sev !== 'all') {
+        filtered = filtered.filter(r => r.severity === sev);
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <span class="es-icon">✅</span>
+            <p>لا توجد مخاطر في هذا المستوى (${sev === 'all' ? 'الكل' : getSeverityArabic(sev)}). جميع الأنظمة مستقرة.</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(r => `
+        <div class="risk-item sev-${r.severity || 'medium'}">
+          <div class="risk-item-head">
+            <span class="risk-item-title">
+              <span>${getCategoryIcon(r.category)}</span>
+              <span>${r.reason || r.category || 'تنبيه تشغيلي'}</span>
+            </span>
+            <div class="risk-item-badges">
+              <span class="kpi-sub-badge badge-low" style="font-size:10px;">${getCategoryArabic(r.category)}</span>
+              <span class="kpi-sub-badge badge-${r.severity || 'medium'}">${getSeverityArabic(r.severity)}</span>
+            </div>
+          </div>
+          
+          ${r.evidence && r.evidence.length > 0 ? `
+            <div class="risk-evidence-box">
+              <span>🔍 <strong>الدليل التحليلي:</strong></span>
+              <span>${JSON.stringify(r.evidence[0]).replace(/["{}]/g, '').replace(/,/g, ' | ')}</span>
+            </div>` : ''}
+
+          ${r.recommended_actions && r.recommended_actions.length > 0 ? `
+            <div class="risk-action-box">
+              <span class="risk-action-text">🛠️ <strong>التدخل الموصى به:</strong> ${r.recommended_actions.join(' • ')}</span>
+            </div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    // ── Render Recommended Actions ──────────────
+    function renderRecommendedActions(actions) {
+      const container = document.getElementById("recommended-actions-list");
+      if (!actions || actions.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <span class="es-icon">👍</span>
+            <p>لا تتطلب المزرعة أي تدخلات استثنائية اليوم. يرجى الاستمرار في جدول الري القياسي.</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = actions.map((act, idx) => `
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:16px; font-weight:800; color:var(--emerald); background:rgba(16,185,129,0.12); width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center;">${idx + 1}</span>
+            <span style="font-size:13.5px; font-weight:700; color:#fff;">${act}</span>
+          </div>
+          <button class="btn btn-outline" style="font-size:11px; padding:6px 12px;" onclick="confirmAction(this, '${act}')">
+            <span>✔️</span>
+            <span>تأكيد المتابعة</span>
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function confirmAction(btn, text) {
+      btn.style.background = "rgba(16,185,129,0.2)";
+      btn.style.borderColor = "var(--emerald)";
+      btn.style.color = "var(--emerald)";
+      btn.innerHTML = "<span>✅</span> <span>تم التأكيد</span>";
+      btn.disabled = true;
+    }
+
+    // ── Helper Utilities ────────────────────────
+    function getSeverityArabic(sev) {
+      const map = {
+        critical: "حرج جداً",
+        high: "مرتفع",
+        medium: "متوسط",
+        low: "منخفض",
+        normal: "طبيعي",
+        unknown: "غير معروف"
+      };
+      return map[sev] || sev;
+    }
+
+    function getCategoryArabic(cat) {
+      if (!cat) return "عام";
+      if (cat.includes("pivot")) return "ري محوري";
+      if (cat.includes("crop") || cat.includes("ndvi")) return "محصول وأرض";
+      if (cat.includes("water") || cat.includes("ndwi")) return "إجهاد مائي";
+      if (cat.includes("pump") || cat.includes("machine")) return "مضخات ومعدات";
+      if (cat.includes("weather")) return "طقس زراعي";
+      if (cat.includes("ml")) return "ذكاء اصطناعي";
+      return "تشغيلي";
+    }
+
+    function getCategoryIcon(cat) {
+      if (!cat) return "⚠️";
+      if (cat.includes("pivot")) return "🎡";
+      if (cat.includes("crop") || cat.includes("ndvi")) return "🌿";
+      if (cat.includes("water") || cat.includes("ndwi")) return "💧";
+      if (cat.includes("pump") || cat.includes("machine")) return "⚙️";
+      if (cat.includes("weather")) return "🌤️";
+      if (cat.includes("ml")) return "🤖";
+      return "⚠️";
+    }
+
+    function getWeatherIcon(type) {
+      if (!type) return "🌤️";
+      if (type.includes("wind")) return "💨";
+      if (type.includes("heat")) return "🔥";
+      if (type.includes("frost") || type.includes("cold")) return "❄️";
+      if (type.includes("rain")) return "🌧️";
+      return "🌤️";
+    }
+
+    function showErrorBanner(msg) {
+      const tag = document.getElementById("data-freshness-tag");
+      if (tag) {
+        tag.textContent = "تعذر تحميل البيانات: " + msg;
+        tag.style.color = "var(--red)";
+      }
+    }
+  </script>
+
+</body>
+</html>

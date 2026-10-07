@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Carbon-Sat V2.0 — مزرعة الإسماعيلية | Tayseer</title>
+<meta name="description" content="مراقبة الكربون والانبعاثات لمزارع الدواجن والمواشي">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#050a14;--card:#0d1829;--card2:#111f35;
+  --border:rgba(99,179,237,0.14);
+  --green:#10b981;--blue:#6366f1;--gold:#f59e0b;--red:#ef4444;--orange:#f97316;
+  --text1:#f0f4ff;--text2:#94a3b8;--text3:#475569;
+}
+body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text1);min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background:
+  radial-gradient(ellipse 60% 40% at 5% 10%,rgba(16,185,129,.06) 0,transparent 60%),
+  radial-gradient(ellipse 50% 35% at 95% 85%,rgba(99,102,241,.07) 0,transparent 60%);
+  pointer-events:none;z-index:0}
+
+.wrap{position:relative;z-index:1;max-width:1320px;margin:0 auto;padding:24px 18px 60px}
+a.back{display:inline-flex;align-items:center;gap:6px;color:var(--text2);text-decoration:none;font-size:.9rem;margin-bottom:18px;transition:color .2s}
+a.back:hover{color:var(--green)}
+
+/* ── Hero ── */
+.hero{background:linear-gradient(135deg,#061528 0%,#0c2d52 60%,#071220 100%);
+  border:1px solid var(--border);border-radius:20px;padding:34px 38px;margin-bottom:28px;position:relative;overflow:hidden}
+.hero::after{content:'🛰️';position:absolute;left:36px;top:50%;transform:translateY(-50%);font-size:88px;opacity:.1}
+.hero-t{font-size:1.95rem;font-weight:900;margin-bottom:5px}
+.hero-t span{color:#34d399}
+.hero-s{color:var(--text2);font-size:.95rem;margin-bottom:10px}
+.hero-loc{display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,.12);
+  border:1px solid rgba(99,102,241,.28);color:#818cf8;padding:4px 14px;border-radius:20px;font-size:.8rem;font-weight:600}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(16,185,129,.12);
+  border:1px solid rgba(16,185,129,.3);color:var(--green);padding:4px 14px;border-radius:20px;
+  font-size:.8rem;font-weight:600;margin-right:8px}
+.hero-badge::before{content:'●';animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── Banner / Toast ── */
+#banner{display:none;padding:10px 18px;border-radius:10px;font-size:.88rem;margin-bottom:14px}
+#banner.info{display:block;background:rgba(99,102,241,.14);border:1px solid rgba(99,102,241,.3);color:#a5b4fc}
+#banner.hidden{display:none!important}
+#toasts{position:fixed;bottom:20px;left:20px;z-index:9999;display:flex;flex-direction:column-reverse;gap:8px}
+.toast{min-width:240px;max-width:360px;padding:11px 16px;border-radius:12px;font-size:.86rem;
+  opacity:0;transform:translateX(-16px);transition:opacity .3s,transform .3s;white-space:pre-line}
+.toast.show{opacity:1;transform:none}
+.toast-ok{background:#064e3b;border:1px solid #10b981;color:#d1fae5}
+.toast-err{background:#450a0a;border:1px solid #ef4444;color:#fee2e2}
+.toast-info{background:#1e1b4b;border:1px solid #6366f1;color:#e0e7ff}
+
+/* ── Divider ── */
+.div{font-size:.78rem;font-weight:700;color:var(--text3);letter-spacing:.1em;
+  text-transform:uppercase;margin:6px 0 18px;display:flex;align-items:center;gap:10px}
+.div::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── Summary Cards ── */
+.sum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:28px}
+@media(max-width:860px){.sum-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:480px){.sum-grid{grid-template-columns:1fr}}
+.sc{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px 18px;transition:transform .2s,box-shadow .2s}
+.sc:hover{transform:translateY(-3px);box-shadow:0 0 28px rgba(16,185,129,.15)}
+.sc-icon{font-size:1.5rem;margin-bottom:8px}
+.sc-label{font-size:.78rem;color:var(--text2);margin-bottom:6px}
+.sc-val{font-size:1.75rem;font-weight:700}
+.sc-sub{font-size:.74rem;color:var(--text3);margin-top:3px}
+.c-green{color:#34d399!important} .c-red{color:#f87171!important}
+.c-blue{color:#818cf8!important} .c-gold{color:#fbbf24!important} .c-orange{color:#fb923c!important}
+
+/* ── 4-Layer Heatmap Grid ── */
+.layers-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-bottom:24px}
+@media(max-width:720px){.layers-grid{grid-template-columns:1fr}}
+
+.layer-card{background:var(--card2);border:1px solid var(--border);border-radius:18px;padding:24px;
+  display:flex;flex-direction:column;gap:14px}
+.layer-title{font-size:1.05rem;font-weight:700;display:flex;align-items:center;gap:8px}
+
+/* ── Heatmap bar ── */
+.heatbar-wrap{display:flex;flex-direction:column;gap:6px}
+.heatbar{height:22px;border-radius:10px;transition:width .8s ease;min-width:6px}
+.heatbar-row{display:flex;align-items:center;gap:10px}
+.heatbar-label{font-size:.78rem;color:var(--text2);min-width:80px;text-align:right}
+.heatbar-val{font-size:.82rem;font-weight:700;min-width:70px}
+
+/* ── Legend strip ── */
+.legend-strip{display:flex;gap:10px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:.75rem;color:var(--text2)}
+.legend-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+
+/* ── Big value boxes ── */
+.bigbox{background:rgba(255,255,255,.03);border:1px solid var(--border);
+  border-radius:12px;padding:16px;text-align:center}
+.bigval{font-size:2rem;font-weight:700;display:block}
+.biglabel{font-size:.78rem;color:var(--text2);margin-top:4px}
+.bigunit{font-size:.7rem;color:var(--text3)}
+
+/* ── Buttons ── */
+.btn{width:100%;padding:12px;border:none;border-radius:12px;cursor:pointer;
+  font-family:'Cairo',sans-serif;font-weight:700;font-size:.93rem;transition:opacity .2s,transform .1s}
+.btn:hover{opacity:.9} .btn:active{transform:scale(.98)} .btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-green{background:linear-gradient(135deg,#059669,#10b981);color:#fff}
+.btn-blue{background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff}
+.btn-gold{background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff}
+.btn-red{background:linear-gradient(135deg,#b91c1c,#ef4444);color:#fff}
+.btn-orange{background:linear-gradient(135deg,#c2410c,#f97316);color:#fff}
+
+/* ── Chart panel ── */
+.chart-panel{background:var(--card);border:1px solid var(--border);border-radius:18px;
+  padding:26px;margin-bottom:22px}
+.chart-panel canvas{max-height:260px}
+
+/* ── Credits panel ── */
+.credits-panel{background:linear-gradient(135deg,#0d1f0d,#0d1829);
+  border:1px solid rgba(16,185,129,.25);border-radius:20px;padding:30px;margin-bottom:22px;
+  box-shadow:0 0 30px rgba(16,185,129,.1)}
+.cred-inputs{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+@media(max-width:480px){.cred-inputs{grid-template-columns:1fr}}
+label{display:block;font-size:.82rem;color:var(--text2);margin-bottom:5px}
+.finput,.fselect{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);
+  border-radius:10px;color:var(--text1);padding:9px 12px;font-size:.93rem;
+  font-family:'Cairo',sans-serif;outline:none;transition:border-color .2s}
+.finput:focus,.fselect:focus{border-color:var(--green)}
+.cred-result-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+@media(max-width:640px){.cred-result-grid{grid-template-columns:repeat(2,1fr)}}
+.crbox{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;
+  padding:12px;text-align:center}
+.crbox-label{font-size:.74rem;color:var(--text2);margin-bottom:4px}
+.crbox-val{font-size:1.4rem;font-weight:700}
+.credit-msg{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:16px}
+.hidden{display:none!important}
+
+/* ── GEE Guide ── */
+.gee-guide{background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.18);
+  border-radius:14px;padding:20px;margin-bottom:22px}
+.gee-guide-t{color:#818cf8;font-weight:700;margin-bottom:12px;font-size:.95rem}
+.gee-step{display:flex;align-items:flex-start;gap:10px;font-size:.83rem;color:var(--text2);margin-bottom:8px}
+.gee-n{background:var(--blue);color:#fff;width:20px;height:20px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0}
+</style>
+</head>
+<body style="display:flex;min-height:100vh;overflow-x:hidden;">
+{% include 'sidebar.html' ignore missing %}
+<div id="banner" class="hidden"></div>
+<div id="toasts"></div>
+<div class="wrap">
+
+<a href="/dashboard" class="back">← العودة للداشبورد</a>
+
+<!-- Hero -->
+<div class="hero">
+  <div class="hero-t">🌍 Tayseer <span>Carbon-Sat</span> V2.0</div>
+  <div class="hero-s">مراقبة الكربون والانبعاثات — مزرعة دواجن ومواشي</div>
+  <span class="hero-badge">مراقبة فورية</span>
+  <span class="hero-loc">📍 الإسماعيلية / طريق بورسعيد — القناة الحلوة</span>
+</div>
+
+<!-- Summary Cards -->
+<div class="div">ملخص كربوني</div>
+<div class="sum-grid">
+  <div class="sc"><div class="sc-icon">🌱</div><div class="sc-label">SOM — المادة العضوية</div>
+    <div class="sc-val c-green" id="s-som">—</div><div class="sc-sub">mg/kg</div></div>
+  <div class="sc"><div class="sc-icon">🌍</div><div class="sc-label">NCS — إمداد الكربون الصافي</div>
+    <div class="sc-val c-blue" id="s-ncs">—</div><div class="sc-sub">g C/m²/year</div></div>
+  <div class="sc"><div class="sc-icon">🔥</div><div class="sc-label">حرارة العنابر</div>
+    <div class="sc-val c-orange" id="s-heat">—</div><div class="sc-sub">°C متوسط LST</div></div>
+  <div class="sc"><div class="sc-icon">🐄</div><div class="sc-label">بؤر CH₄</div>
+    <div class="sc-val c-red" id="s-ch4">—</div><div class="sc-sub">مؤشر الانبعاث</div></div>
+</div>
+
+<!-- 4 Layer Heatmaps -->
+<div class="div">طبقات الكربون — 10×10 متر</div>
+<div class="layers-grid">
+
+  <!-- Layer 1: SOM -->
+  <div class="layer-card">
+    <div class="layer-title">🌳 طبقة 1 — SOM (المادة العضوية للتربة)</div>
+    <div class="bigbox"><span class="bigval c-green" id="l-som">—</span>
+      <div class="biglabel">Soil Organic Matter</div><div class="bigunit">mg/kg</div></div>
+    <div class="heatbar-wrap" id="som-bar-wrap">
+      <div class="heatbar-row"><span class="heatbar-label">SOM عالية</span>
+        <div style="flex:1;background:rgba(255,255,255,.05);border-radius:10px;overflow:hidden;height:14px">
+          <div class="heatbar" id="som-bar" style="background:linear-gradient(90deg,#d7191c,#fdae61,#ffffbf,#a6d96a,#1a9641);width:0%"></div>
+        </div><span class="heatbar-val c-green" id="som-pct">—</span>
+      </div>
+    </div>
+    <div class="legend-strip">
+      <div class="legend-item"><div class="legend-dot" style="background:#d7191c"></div>ضعيف</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fdae61"></div>متوسط</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#a6d96a"></div>جيد</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#1a9641"></div>عالي</div>
+    </div>
+    <div style="font-size:.8rem;color:var(--text3)">المعيار: 0 – 8000 mg/kg (الأراضي المصرية)</div>
+  </div>
+
+  <!-- Layer 2: NCS -->
+  <div class="layer-card">
+    <div class="layer-title">🌍 طبقة 2 — NCS (صافي إمداد الكربون)</div>
+    <div class="bigbox"><span class="bigval c-blue" id="l-ncs">—</span>
+      <div class="biglabel">Net Carbon Supply</div><div class="bigunit">g C/m²/year</div></div>
+    <div class="heatbar-wrap">
+      <div class="heatbar-row"><span class="heatbar-label">مخزن ← مصدر</span>
+        <div style="flex:1;background:rgba(255,255,255,.05);border-radius:10px;overflow:hidden;height:14px">
+          <div class="heatbar" id="ncs-bar" style="background:linear-gradient(90deg,#ef4444,#fff,#3b82f6);width:0%"></div>
+        </div><span class="heatbar-val" id="ncs-status">—</span>
+      </div>
+    </div>
+    <div class="legend-strip">
+      <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>مصدر كربون</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fff;border:1px solid #444"></div>متعادل</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#3b82f6"></div>ماص للكربون</div>
+    </div>
+    <div style="font-size:.8rem;color:var(--text3)">موجب = تربة تخزّن كربون | سالب = تربة تُطلق كربون</div>
+  </div>
+
+  <!-- Layer 3: Barn Heat -->
+  <div class="layer-card">
+    <div class="layer-title">🔥 طبقة 3 — حرارة العنابر (LST)</div>
+    <div class="bigbox"><span class="bigval c-orange" id="l-heat">—</span>
+      <div class="biglabel">Barn Heat Plume</div><div class="bigunit">°C (متوسط)</div></div>
+    <div class="heatbar-wrap">
+      <div class="heatbar-row"><span class="heatbar-label">درجة الحرارة</span>
+        <div style="flex:1;background:rgba(255,255,255,.05);border-radius:10px;overflow:hidden;height:14px">
+          <div class="heatbar" id="heat-bar"
+            style="background:linear-gradient(90deg,#93c5fd,#fdba74,#f97316,#dc2626,#7f1d1d);width:0%"></div>
+        </div><span class="heatbar-val c-orange" id="heat-class">—</span>
+      </div>
+    </div>
+    <div class="legend-strip">
+      <div class="legend-item"><div class="legend-dot" style="background:#93c5fd"></div>بارد &lt;25°C</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fdba74"></div>معتدل 25-35°C</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#dc2626"></div>ساخن &gt;35°C</div>
+    </div>
+    <div style="font-size:.8rem;color:var(--text3)">بؤر الحرارة = مناطق تهوية عالية = انبعاثات مرتفعة</div>
+  </div>
+
+  <!-- Layer 4: CH4 -->
+  <div class="layer-card">
+    <div class="layer-title">🐄 طبقة 4 — بؤر CH₄ (الميثان)</div>
+    <div class="bigbox"><span class="bigval c-red" id="l-ch4">—</span>
+      <div class="biglabel">CH4 Emissions Index</div><div class="bigunit">مؤشر نسبي</div></div>
+    <div class="heatbar-wrap">
+      <div class="heatbar-row"><span class="heatbar-label">تركيز CH₄</span>
+        <div style="flex:1;background:rgba(255,255,255,.05);border-radius:10px;overflow:hidden;height:14px">
+          <div class="heatbar" id="ch4-bar"
+            style="background:linear-gradient(90deg,#fff,#ffb2b2,#ff4d4d,#cc0000,#660000);width:0%"></div>
+        </div><span class="heatbar-val c-red" id="ch4-class">—</span>
+      </div>
+    </div>
+    <div class="legend-strip">
+      <div class="legend-item"><div class="legend-dot" style="background:#ffffff;border:1px solid #444"></div>منخفض</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ff4d4d"></div>متوسط</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#660000"></div>بؤرة عالية</div>
+    </div>
+    <div style="font-size:.8rem;color:var(--text3)">يُحسب من: LST × Manure Index × 1.5 (Sentinel-2 B11/B8)</div>
+  </div>
+
+</div>
+
+<!-- Refresh Button -->
+<button class="btn btn-blue" id="btn-matrix" onclick="loadMatrix()" style="margin-bottom:24px">
+  📡 تحديث كل الطبقات الأربع عبر الأقمار الصناعية
+</button>
+
+<!-- Chart -->
+<div class="div">الثروة الحيوانية والانبعاثات</div>
+<div class="chart-panel">
+  <div style="font-size:1.05rem;font-weight:700;margin-bottom:16px">📊 انبعاثات CH₄ و NH₃ الشهرية</div>
+  <canvas id="emissions-chart"></canvas>
+</div>
+
+<!-- Credits Calculator -->
+<div class="div">حاسبة رصيد الكربون</div>
+<div class="credits-panel">
+  <div style="font-size:1.2rem;font-weight:800;margin-bottom:18px">💰 حاسبة رصيد الكربون (Carbon Credits)</div>
+  <div class="cred-inputs">
+    <div><label for="cr-period">الفترة الزمنية</label>
+      <select class="fselect" id="cr-period">
+        <option value="90">آخر 3 شهور</option>
+        <option value="180">آخر 6 شهور</option>
+        <option value="365" selected>سنة كاملة</option>
+      </select>
+    </div>
+    <div><label for="cr-price">سعر الطن (USD)</label>
+      <input type="number" class="finput" id="cr-price" value="15" min="1" max="200">
+    </div>
+  </div>
+  <div id="cr-result" class="hidden" style="margin-bottom:16px">
+    <div class="cred-result-grid">
+      <div class="crbox"><div class="crbox-label">الانبعاثات</div>
+        <div class="crbox-val c-red" id="cr-emissions">—</div>
+        <div style="font-size:.7rem;color:var(--text3)">طن CO₂</div></div>
+      <div class="crbox"><div class="crbox-label">التخزين</div>
+        <div class="crbox-val c-green" id="cr-seq">—</div>
+        <div style="font-size:.7rem;color:var(--text3)">طن C</div></div>
+      <div class="crbox"><div class="crbox-label">الرصيد الصافي</div>
+        <div class="crbox-val c-blue" id="cr-bal">—</div>
+        <div style="font-size:.7rem;color:var(--text3)">طن</div></div>
+      <div class="crbox"><div class="crbox-label">القيمة المحتملة</div>
+        <div class="crbox-val c-gold" id="cr-val">—</div>
+        <div style="font-size:.7rem;color:var(--text3)">دولار</div></div>
+    </div>
+    <div class="credit-msg" id="cr-msg"></div>
+  </div>
+  <button class="btn btn-gold" id="btn-credits" onclick="calcCredits()">💎 احسب رصيد الكربون</button>
+</div>
+
+<!-- GEE Guide -->
+<div class="gee-guide">
+  <div class="gee-guide-t">📡 تشغيل السكريبت في GEE Code Editor</div>
+  <div class="gee-step"><div class="gee-n">1</div>افتح <strong>code.earthengine.google.com</strong></div>
+  <div class="gee-step"><div class="gee-n">2</div>انسخ محتوى <code>gee_scripts/carbon_monitoring.js</code> (إحداثيات مزرعة الإسماعيلية مضمّنة)</div>
+  <div class="gee-step"><div class="gee-n">3</div>اضغط <strong>Run</strong> — ستظهر 4 طبقات: SOM / NCS / Barn Heat / CH4 Hotspots</div>
+  <div class="gee-step"><div class="gee-n">4</div>Tasks tab → Export CSV (Tayseer_CarbonSat_Poultry_Ismailia_2022_2024)</div>
+</div>
+
+</div><!-- /wrap -->
+<script src="/static/js/carbon-dashboard.js"></script>
+</body>
+</html>

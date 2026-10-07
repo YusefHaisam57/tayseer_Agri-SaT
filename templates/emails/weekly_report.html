@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Cairo',Arial,sans-serif;direction:rtl;background:#eff6ff;color:#1f2937;padding:20px}
+  .wrap{max-width:680px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(59,130,246,.12)}
+  .hdr{background:linear-gradient(135deg,#1e40af,#3b82f6);color:#fff;padding:32px;text-align:center}
+  .hdr h1{font-size:24px;font-weight:800;margin-bottom:6px}
+  .hdr p{opacity:.85;font-size:13px;margin:2px 0}
+  .body{padding:28px}
+  /* Email-safe: table-based metric grid */
+  .metrics-table{width:100%;border-collapse:separate;border-spacing:12px;margin:16px 0}
+  .metric-card{background:#eff6ff;border:1px solid #bae6fd;border-radius:10px;padding:16px 12px;text-align:center;vertical-align:top;width:50%}
+  .metric-label{font-size:12px;color:#6b7280;margin:0 0 4px}
+  .metric-val{font-size:28px;font-weight:800;color:#1e40af;line-height:1.1}
+  .metric-sub{font-size:11px;color:#9ca3af;margin-top:2px}
+  .trend-up{color:#10b981}
+  .trend-dn{color:#dc2626}
+  .chart-ph{background:#e0e7ff;border-radius:10px;padding:32px 0;text-align:center;color:#6b7280;font-size:14px;margin:18px 0}
+  .section-title{font-weight:700;font-size:15px;color:#1e40af;margin:22px 0 10px;padding-bottom:6px;border-bottom:2px solid #e0e7ff}
+  .list-ok{padding-right:18px;line-height:2.2;font-size:14px;color:#065f46}
+  .list-warn{padding-right:18px;line-height:2.2;font-size:14px;color:#92400e}
+  .reco{background:#eff6ff;border-right:4px solid #3b82f6;padding:16px;border-radius:8px;font-size:14px;line-height:1.8;margin:16px 0}
+  .cta{text-align:center;margin:28px 0}
+  .cta a{background:#1e40af;color:#fff;text-decoration:none;padding:13px 38px;border-radius:8px;font-weight:700;font-size:15px;display:inline-block}
+  .foot{background:#f3f4f6;text-align:center;padding:18px;font-size:12px;color:#6b7280}
+  .foot a{color:#6b7280;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <h1>📊 التقرير الأسبوعي</h1>
+    <p>{{ farm_name }}</p>
+    <p>{{ week_range }}</p>
+  </div>
+  <div class="body">
+    <p style="font-size:16px;font-weight:700;color:#1e40af;margin-bottom:4px">مرحباً، {{ user_name }}!</p>
+    <p style="font-size:14px;color:#6b7280;margin-bottom:8px">إليك ملخص أداء مزرعتك خلال الأسبوع الماضي.</p>
+
+    <!-- Metric grid: 2 cards per row via table (email-safe) -->
+    <table class="metrics-table">
+      <tr>
+        <td class="metric-card">
+          <p class="metric-label">متوسط NDVI</p>
+          <p class="metric-val">{{ avg_ndvi }}</p>
+          <p class="metric-sub {% if ndvi_trend.startswith('📈') %}trend-up{% else %}trend-dn{% endif %}">{{ ndvi_trend }}</p>
+        </td>
+        <td class="metric-card">
+          <p class="metric-label">ساعات التشغيل</p>
+          <p class="metric-val">{{ total_hours }}</p>
+          <p class="metric-sub">ساعة</p>
+        </td>
+      </tr>
+      <tr>
+        <td class="metric-card">
+          <p class="metric-label">استهلاك المياه</p>
+          <p class="metric-val">{{ water_usage }}</p>
+          <p class="metric-sub">م³</p>
+        </td>
+        <td class="metric-card">
+          <p class="metric-label">الكتلة الحيوية</p>
+          <p class="metric-val">{{ biomass }}</p>
+          <p class="metric-sub">طن</p>
+        </td>
+      </tr>
+    </table>
+
+    <div class="chart-ph">📈 مخطط تطور NDVI — (مرفق كصورة)</div>
+
+    <div class="section-title">✅ إنجازات الأسبوع</div>
+    <ul class="list-ok">
+      {% for a in achievements %}<li>{{ a }}</li>{% endfor %}
+    </ul>
+
+    {% if concerns %}
+    <div class="section-title">⚠️ نقاط تحتاج انتباهاً</div>
+    <ul class="list-warn">
+      {% for c in concerns %}<li>{{ c }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+
+    <div class="section-title">💡 توصيات الأسبوع القادم</div>
+    <div class="reco">{{ recommendations }}</div>
+
+    <div class="cta">
+      <a href="{{ dashboard_url }}">عرض التفاصيل الكاملة ←</a>
+    </div>
+  </div>
+  <div class="foot">
+    🛰️ Tayseer Agri-SaT<br><br>
+    <a href="{{ base_url }}/email/unsubscribe?token={{ unsubscribe_token }}">إلغاء الاشتراك</a>
+    &nbsp;|&nbsp;
+    <a href="mailto:{{ support_email }}">الدعم الفني</a>
+    <br><br>© 2026 Tayseer. جميع الحقوق محفوظة.
+  </div>
+</div>
+</body>
+</html>

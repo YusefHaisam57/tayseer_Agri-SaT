@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔌 التكاملات والخدمات الخارجية — Tayseer Agri-SaT</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ BUILD_VERSION }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}?v={{ BUILD_VERSION }}">
+  <style>
+    body {
+      background: #0a111e;
+      color: #f1f5f9;
+      font-family: 'Cairo', sans-serif;
+      margin: 0;
+      display: flex;
+      min-height: 100vh;
+    }
+    .main-content {
+      flex: 1;
+      padding: 30px;
+      overflow-y: auto;
+    }
+    .page-header {
+      margin-bottom: 25px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding-bottom: 15px;
+    }
+    .grid-integrations {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+    }
+    .int-card {
+      background: #111e33;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform .2s, border-color .2s;
+    }
+    .int-card:hover {
+      border-color: rgba(16,185,129,0.3);
+      transform: translateY(-2px);
+    }
+    .int-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .int-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .int-status {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .status-CONNECTED { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+    .status-CONFIGURED { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
+    .status-NOT_CONFIGURED { background: rgba(148,163,184,0.12); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
+    .status-ERROR { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
+    .status-WAITING_FOR_HARDWARE { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+    .int-desc {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.6;
+      margin-bottom: 15px;
+    }
+    .int-meta {
+      background: rgba(0,0,0,0.25);
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #cbd5e1;
+      font-family: monospace;
+      margin-bottom: 15px;
+      word-break: break-all;
+    }
+    .int-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .btn-test {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #e2e8f0;
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background .2s;
+    }
+    .btn-test:hover {
+      background: rgba(16,185,129,0.2);
+      color: #34d399;
+    }
+  </style>
+</head>
+<body>
+  {% include 'sidebar.html' %}
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1 style="margin:0 0 8px 0; font-size:24px; font-weight:800; color:#f8fafc;">🔌 مركز التكاملات والخدمات الميدانية والخارجية</h1>
+      <p style="margin:0; font-size:13px; color:#94a3b8;">
+        المراقبة التشخيصية اللحظية لجميع بوابات الربط: الأقمار الصناعية، محطات الطقس، نماذج الذكاء الاصطناعي، أجهزة الـ IoT، وقنوات الإشعارات.
+      </p>
+    </div>
+
+    <div class="grid-integrations" id="integrations-grid">
+      <!-- Loading placeholder -->
+      <div style="grid-column: 1/-1; text-align:center; padding:50px; color:#94a3b8;">
+        جاري تحميل حالة الخدمات والتكاملات... ⏳
+      </div>
+    </div>
+  </main>
+
+  <script>
+    async function loadIntegrations() {
+      try {
+        const res = await fetch('/api/system/integrations-status');
+        const data = await res.json();
+        renderGrid(data.services || []);
+      } catch (e) {
+        document.getElementById('integrations-grid').innerHTML = `
+          <div style="grid-column: 1/-1; color:#f87171; background:rgba(239,68,68,0.1); padding:20px; border-radius:10px;">
+            ⚠️ تعذر تحميل حالة الخدمات: ${e.message}
+          </div>`;
+      }
+    }
+
+    function renderGrid(services) {
+      const grid = document.getElementById('integrations-grid');
+      if (!services || services.length === 0) {
+        grid.innerHTML = '<p>لا توجد خدمات مسجلة.</p>';
+        return;
+      }
+      grid.innerHTML = services.map(s => `
+        <div class="int-card">
+          <div>
+            <div class="int-head">
+              <div class="int-title">
+                <span>${s.icon || '🔌'}</span>
+                <span>${s.name}</span>
+              </div>
+              <span class="int-status status-${s.status}">${s.status_label || s.status}</span>
+            </div>
+            <div class="int-desc">${s.description}</div>
+            <div class="int-meta">
+              <strong>المعرف:</strong> ${s.identifier || '-'}<br>
+              <strong>آخر استجابة:</strong> ${s.last_checked || 'الآن'}<br>
+              <strong>الملاحظة:</strong> ${s.details || 'طبيعي'}
+            </div>
+          </div>
+          <div class="int-actions">
+            ${s.link ? `<a href="${s.link}" class="btn-test" style="text-decoration:none;">فتح الإعدادات ⚙️</a>` : ''}
+            <span style="font-size:11px; color:#64748b; margin-right:auto;">لا يتم عرض المفاتيح السرية 🔒</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', loadIntegrations);
+  </script>
+</body>
+</html>

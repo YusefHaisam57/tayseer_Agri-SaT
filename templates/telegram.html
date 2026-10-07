@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram — Tayseer Agri-SaT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Cairo', sans-serif; }
+        body { background: #0f172a; color: #e5e7eb; }
+        .glass { background: rgba(15,23,42,0.85); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(12px); }
+        .gradient-header { background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #1d4ed8 100%); }
+        .tg-bubble-in  { background: #3b82f6; color: #fff; border-radius: 18px 18px 4px 18px; }
+        .tg-bubble-out { background: rgba(255,255,255,0.08); color: #e5e7eb; border-radius: 18px 18px 18px 4px; }
+        .step-circle { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
+        .badge-ok   { background:rgba(16,185,129,.2); color:#34d399; border:1px solid rgba(52,211,153,.3); }
+        .badge-pend { background:rgba(245,158,11,.2); color:#fbbf24; border:1px solid rgba(251,191,36,.3); }
+        .badge-off  { background:rgba(107,114,128,.2); color:#9ca3af; border:1px solid rgba(156,163,175,.3); }
+        input, select { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #e5e7eb; }
+        input:focus, select:focus { outline:none; border-color:#3b82f6; }
+        .btn-tg { background:#2481cc; color:#fff; font-weight:700; transition: all .2s; }
+        .btn-tg:hover { background:#1c69a6; }
+        .btn-sec { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12); color:#e5e7eb; transition:all .2s; }
+        .btn-sec:hover { background:rgba(255,255,255,0.12); }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    {% include 'sidebar.html' ignore missing %}
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col h-screen overflow-y-auto">
+
+        <!-- Header -->
+        <header class="gradient-header text-white shadow-xl shrink-0 px-6 py-4 flex items-center justify-between">
+            <div>
+                <h1 class="text-xl font-bold">✈️ مساعد تيسير على تليجرام</h1>
+                <p class="text-xs text-blue-300 mt-0.5">تواصل مباشر مع نظام المنصة عبر Telegram Bot</p>
+            </div>
+            <span id="tg-badge" class="text-xs px-3 py-1 rounded-full badge-off">⏳ جاري التحقق…</span>
+        </header>
+
+        <div class="flex-1 p-6 space-y-6 overflow-y-auto">
+
+            <!-- ════════════════════════════════ SETUP CARD ════════════════════════════════ -->
+            <div class="glass rounded-2xl p-6">
+                <div class="flex items-center gap-4 mb-6">
+                    <!-- Telegram logo -->
+                    <div class="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style="background:#2481cc">
+                        <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121L7.773 13.98l-2.926-.918c-.636-.196-.658-.636.136-.943l11.455-4.416c.528-.196.994.12.82.943z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold">اربط حسابك بالبوت الذكي</h2>
+                        <p class="text-sm text-gray-400">احصل على تحليلات الأقمار الصناعية وتوصيات الري المباشرة</p>
+                    </div>
+                </div>
+
+                <!-- 3-Step Instructions -->
+                <div class="space-y-4 mb-6">
+                    <!-- Step 1 -->
+                    <div class="flex gap-4 items-start p-4 rounded-xl" style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.18)">
+                        <div class="step-circle shrink-0" style="background:#3b82f6;color:#fff">1</div>
+                        <div>
+                            <p class="font-bold text-sm mb-1">افتح تليجرام وابحث عن البوت</p>
+                            <div class="flex items-center gap-3 mt-2">
+                                <code class="bg-gray-800 px-3 py-1 rounded-lg text-blue-300 text-xs" dir="ltr">@TayseerAgriBot</code>
+                                <button onclick="window.open('https://t.me/TayseerAgriBot', '_blank')" class="btn-tg px-3 py-1 rounded-lg text-xs">فتح في تليجرام</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="flex gap-4 items-start p-4 rounded-xl" style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.18)">
+                        <div class="step-circle shrink-0" style="background:#2563eb;color:#fff">2</div>
+                        <div class="flex-1">
+                            <p class="font-bold text-sm mb-2">ابعت رسالة بدء للبوت (start)</p>
+                            <code class="bg-gray-800 px-3 py-1 rounded-lg text-blue-300 text-xs" dir="ltr">/start</code>
+                            <p class="text-xs text-gray-400 mt-1">البوت هيظهرلك رقمك التعريفي (Telegram ID)</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="flex gap-4 items-start p-4 rounded-xl" style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.18)">
+                        <div class="step-circle shrink-0" style="background:#1d4ed8;color:#fff">3</div>
+                        <div class="w-full">
+                            <p class="font-bold text-sm mb-2">اربط بالطريقة اللي تريحك:</p>
+                            
+                            <div class="mb-3 pl-2 border-r-2 border-blue-500/50">
+                                <p class="text-xs text-gray-300 mb-1">🔸 الطريقة الأولى: من داخل التليجرام ابعت الأمر:</p>
+                                <code class="bg-gray-800 px-3 py-1 rounded-lg text-blue-300 text-xs shadow" dir="ltr" id="link-cmd">/link {{ user.email }}</code>
+                                <button onclick="copyText(document.getElementById('link-cmd').innerText)" class="text-xs text-blue-400 hover:text-blue-300 underline mr-2">نسخ</button>
+                            </div>
+
+                            <div class="pl-2 border-r-2 border-blue-500/50">
+                                <p class="text-xs text-gray-300 mb-2">🔸 الطريقة الثانية: اكتب الـ Telegram ID هنا واضغط حفظ:</p>
+                                <div class="flex gap-2 max-w-sm">
+                                    <input type="text" id="telegram-id-input" placeholder="مثال: 123456789"
+                                           class="flex-1 px-4 py-2 rounded-xl text-sm"/>
+                                    <button onclick="linkTelegramById()" class="btn-tg px-5 py-2 rounded-xl text-sm">حفظ</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action buttons -->
+                <div class="flex flex-wrap gap-3 mt-6">
+                    <button onclick="sendTestMsg()" class="btn-tg px-5 py-2 rounded-xl text-sm shadow">
+                        📨 ابعت رسالة تجريبية
+                    </button>
+                </div>
+
+                <!-- Result banner -->
+                <div id="result-banner" class="hidden mt-4 p-3 rounded-xl text-sm text-center font-bold"></div>
+            </div>
+
+            <!-- ════════════════════════ QUICK QUESTIONS ════════════════════════ -->
+            <div class="glass rounded-2xl p-6">
+                <h3 class="font-bold text-base mb-4">💬 أوامر البوت المباشرة (اضغط للنسخ)</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                    <div class="p-3 rounded-xl text-center cursor-pointer hover:border-blue-500 transition"
+                         style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.2)"
+                         onclick="copyText('/status')">
+                        📊 /status (التقرير)
+                    </div>
+                    <div class="p-3 rounded-xl text-center cursor-pointer hover:border-blue-500 transition"
+                         style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.2)"
+                         onclick="copyText('/irrigate')">
+                        💧 /irrigate (الري)
+                    </div>
+                    <div class="p-3 rounded-xl text-center cursor-pointer hover:border-blue-500 transition"
+                         style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.2)"
+                         onclick="copyText('/pivot')">
+                        🔧 /pivot (البيفوت)
+                    </div>
+                    <div class="p-3 rounded-xl text-center cursor-pointer hover:border-blue-500 transition"
+                         style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.2)"
+                         onclick="copyText('/weather')">
+                        🌤️ /weather (الطقس)
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-3 text-center">أو تقدر تسأل بالعامية المصرية مباشرة (إيه أخبار المزرعة؟)</p>
+            </div>
+
+            <!-- ════════════════════════ CONVERSATION HISTORY ════════════════════════ -->
+            <div class="glass rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold text-base">📜 آخر محادثات تليجرام</h3>
+                    <button onclick="loadHistory()" class="btn-sec px-3 py-1.5 rounded-lg text-xs">🔄 تحديث</button>
+                </div>
+                <div id="history-container" class="space-y-4 text-sm max-h-96 overflow-y-auto pr-2">
+                    <p class="text-gray-500 text-center py-8">جاري تحميل المحادثات…</p>
+                </div>
+            </div>
+
+            <!-- ════════════════════════ SETUP GUIDE ════════════════════════ -->
+            <div class="glass rounded-2xl p-6">
+                <h3 class="font-bold text-base mb-4">⚙️ إعدادات Webhook للمطورين</h3>
+                <div class="space-y-3 text-xs">
+                    <div class="p-3 rounded-lg" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+                        <p class="text-gray-400 mb-1">1. في التيرمينال، للحصول على رابط Ngrok:</p>
+                        <code class="text-blue-300 block" dir="ltr">ngrok http 5000</code>
+                    </div>
+                    <div class="p-3 rounded-lg" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+                        <p class="text-gray-400 mb-1">2. أضف الرابط واسم البوت والتوكن في ملف .env:</p>
+                        <code class="text-blue-300 block" dir="ltr">TELEGRAM_BOT_TOKEN=12345:ABC...<br/>TELEGRAM_BOT_USERNAME=TayseerAgriBot<br/>WEBHOOK_BASE_URL=https://xxxx.ngrok-free.app</code>
+                    </div>
+                    <div class="p-3 rounded-lg" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+                        <p class="text-gray-400 mb-1">3. إعادة تشغيل السيرفر سيقوم تلقائياً بتفعيل الـ Webhook.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+    // ── Check badge on load ─────────────────────────────────
+    async function checkStatus() {
+        try {
+            const res = await fetch('/api/telegram/history');
+            const data = await res.json();
+            const badge = document.getElementById('tg-badge');
+            if (data.success && data.conversations.length > 0) {
+                badge.className = 'text-xs px-3 py-1 rounded-full badge-ok';
+                badge.textContent = '✅ مربوط ونشط';
+            } else {
+                badge.className = 'text-xs px-3 py-1 rounded-full badge-pend';
+                badge.textContent = '⏳ في انتظار الربط';
+            }
+        } catch {
+            document.getElementById('tg-badge').textContent = '❌ خطأ';
+        }
+    }
+
+    // ── Save Telegram ID ──────────────────────────────────────
+    async function linkTelegramById() {
+        const tid = document.getElementById('telegram-id-input').value.trim();
+        if (!tid) return showBanner('من فضلك أدخل Telegram ID', false);
+
+        showBanner('جاري الربط...', true);
+        try {
+            const res  = await fetch('/api/telegram/link-by-id', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({telegram_id: tid})
+            });
+            const data = await res.json();
+            if (data.success) {
+                showBanner('✅ تم الربط بنجاح! راجع رسايلك على تليجرام.', true);
+                checkStatus();
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                showBanner('❌ فشل الربط: ' + (data.error || 'خطأ غير معروف'), false);
+            }
+        } catch {
+            showBanner('خطأ في الاتصال بالسيرفر', false);
+        }
+    }
+
+    // ── Send test message ───────────────────────────────────
+    async function sendTestMsg() {
+        showBanner('جاري الإرسال…', true);
+        try {
+            const res  = await fetch('/api/telegram/send-test', {method: 'POST'});
+            const data = await res.json();
+            showBanner(data.success ? '✅ تم الإرسال!' : ('❌ خطأ: ' + (data.error || 'التليجرام غير مربوط')), data.success);
+        } catch {
+            showBanner('خطأ في الاتصال بالسيرفر', false);
+        }
+    }
+
+    // ── Load history ────────────────────────────────────────
+    async function loadHistory() {
+        document.getElementById('history-container').innerHTML =
+            '<p class="text-gray-500 text-center py-4">جاري التحميل…</p>';
+        try {
+            const res  = await fetch('/api/telegram/history');
+            const data = await res.json();
+            renderHistory(data.conversations || []);
+        } catch {
+            document.getElementById('history-container').innerHTML =
+                '<p class="text-red-400 text-center py-4">خطأ في تحميل المحادثات</p>';
+        }
+    }
+
+    function renderHistory(conversations) {
+        const box = document.getElementById('history-container');
+        if (!conversations.length) {
+            box.innerHTML = '<p class="text-gray-500 text-center py-8">لا توجد محادثات بعد. اربط حسابك وابدأ!</p>';
+            return;
+        }
+        box.innerHTML = conversations.map(c => `
+            <div class="space-y-2">
+                <div class="flex justify-end">
+                    <div class="tg-bubble-in px-4 py-2 max-w-xs text-sm" style="white-space:pre-line">${escHtml(c.user_msg)}</div>
+                </div>
+                <div class="flex justify-start">
+                    <div class="tg-bubble-out px-4 py-2 max-w-sm text-sm" style="white-space:pre-line">${escHtml(c.bot_msg)}</div>
+                </div>
+                <p class="text-xs text-gray-700 text-center">${c.timestamp || ''}</p>
+            </div>
+        `).join('<hr class="border-gray-800 my-2">');
+    }
+
+    // ── Helpers ─────────────────────────────────────────────
+    function showBanner(msg, ok) {
+        const b = document.getElementById('result-banner');
+        b.className = `mt-4 p-3 rounded-xl text-sm text-center font-bold ${ok ? 'bg-blue-900/40 text-blue-300 border border-blue-700' : 'bg-red-900/40 text-red-300 border border-red-700'}`;
+        b.textContent = msg;
+        b.classList.remove('hidden');
+        setTimeout(() => b.classList.add('hidden'), 5000);
+    }
+
+    function copyText(txt) {
+        navigator.clipboard.writeText(txt).then(() => showBanner(`✅ تم النسخ`, true));
+    }
+
+    function escHtml(s) {
+        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── Init ────────────────────────────────────────────────
+    checkStatus();
+    loadHistory();
+    </script>
+</body>
+</html>

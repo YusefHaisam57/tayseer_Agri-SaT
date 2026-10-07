@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>صندوق الوارد — Tayseer Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Cairo', sans-serif; }
+        body { background: #0f172a; color: #e5e7eb; }
+        .glass { background: rgba(15,23,42,0.85); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(12px); }
+        .gradient-header { background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #1d4ed8 100%); }
+        .msg-row { border-bottom: 1px solid rgba(255,255,255,0.06); transition: background .15s; cursor: pointer; }
+        .msg-row:hover { background: rgba(255,255,255,0.04); }
+        .msg-row.unread { background: rgba(59,130,246,0.07); border-right: 3px solid #3b82f6; }
+        .badge-urgency-urgent { background: rgba(220,38,38,.2); color: #f87171; border: 1px solid rgba(248,113,113,.3); }
+        .badge-urgency-high   { background: rgba(245,158,11,.2); color: #fbbf24; border: 1px solid rgba(251,191,36,.3); }
+        .badge-urgency-normal { background: rgba(107,114,128,.2); color: #9ca3af; border: 1px solid rgba(156,163,175,.3); }
+        .filter-btn { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 6px 16px; font-size: 13px; cursor: pointer; transition: all .2s; }
+        .filter-btn.active { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+        .btn-blue { background: #2563eb; color: #fff; font-weight: 700; transition: all .2s; }
+        .btn-blue:hover { background: #1d4ed8; }
+        textarea { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #e5e7eb; }
+        textarea:focus { outline: none; border-color: #3b82f6; }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    {% include 'sidebar.html' ignore missing %}
+
+    <div class="flex-1 flex flex-col h-screen overflow-y-auto">
+
+        <!-- Header -->
+        <header class="gradient-header text-white shadow-xl shrink-0 px-6 py-4 flex items-center justify-between">
+            <div>
+                <h1 class="text-xl font-bold flex items-center gap-2">
+                    📧 صندوق الوارد
+                    <span id="unread-badge" class="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full hidden"></span>
+                </h1>
+                <p class="text-xs text-blue-300 mt-0.5">رسائل ومتطلبات العملاء</p>
+            </div>
+            <button onclick="loadInbox(currentFilter)" class="text-xs bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg transition">🔄 تحديث</button>
+        </header>
+
+        <div class="flex-1 p-6 space-y-4 overflow-y-auto">
+
+            <!-- Filters -->
+            <div class="glass rounded-xl p-4 flex flex-wrap gap-2 items-center">
+                <button class="filter-btn active" onclick="switchFilter('all', this)">📋 الكل</button>
+                <button class="filter-btn" onclick="switchFilter('unread', this)">🔵 غير مقروءة</button>
+                <button class="filter-btn" onclick="switchFilter('read', this)">✅ مقروءة</button>
+                <button class="filter-btn" onclick="switchFilter('replied', this)">↩️ تم الرد</button>
+                <button class="filter-btn" onclick="switchFilter('urgent', this)">🚨 عاجلة</button>
+            </div>
+
+            <!-- Messages list -->
+            <div class="glass rounded-xl overflow-hidden">
+                <div id="msg-list">
+                    <div class="p-10 text-center text-gray-500">جاري التحميل…</div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════ MODAL ═══════════════════════════ -->
+    <div id="msg-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,.6)">
+        <div class="glass rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <!-- Modal header -->
+                <div class="flex items-start justify-between mb-4 gap-3">
+                    <h2 id="modal-subject" class="text-lg font-bold text-white flex-1 leading-snug"></h2>
+                    <button onclick="closeModal()" class="text-gray-500 hover:text-white text-xl shrink-0">✕</button>
+                </div>
+
+                <!-- Sender info -->
+                <div class="bg-gray-800/60 rounded-xl p-4 mb-4 text-sm space-y-1">
+                    <div class="flex gap-2"><span class="text-gray-400 w-20">من:</span><span id="modal-from" class="font-semibold text-blue-300"></span></div>
+                    <div class="flex gap-2"><span class="text-gray-400 w-20">المزرعة:</span><span id="modal-farm"></span></div>
+                    <div class="flex gap-2"><span class="text-gray-400 w-20">التوقيت:</span><span id="modal-date" class="text-gray-400"></span></div>
+                    <div class="flex gap-2"><span class="text-gray-400 w-20">البريد:</span><span id="modal-email" class="text-emerald-400"></span></div>
+                </div>
+
+                <!-- Message content -->
+                <div class="bg-gray-900/50 rounded-xl p-4 mb-4 text-sm leading-7 text-gray-200" id="modal-body"></div>
+
+                <!-- Reply area -->
+                <div class="space-y-3">
+                    <label class="text-sm font-bold text-gray-300">الرد:</label>
+                    <textarea id="reply-text" rows="4" placeholder="اكتب ردك هنا…" class="w-full px-4 py-3 rounded-xl text-sm resize-none"></textarea>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="sendReply()" class="btn-blue px-5 py-2 rounded-xl text-sm">📤 إرسال الرد بالإيميل</button>
+                        <button onclick="markReplied()" class="text-sm px-5 py-2 rounded-xl" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1)">✓ تم الرد خارجياً</button>
+                    </div>
+                </div>
+
+                <div id="modal-result" class="hidden mt-3 p-3 rounded-xl text-sm text-center font-bold"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    let currentFilter = 'all';
+    let currentMsgId  = null;
+
+    // ── Load inbox ─────────────────────────────────────────────
+    async function loadInbox(status = 'all') {
+        document.getElementById('msg-list').innerHTML =
+            '<div class="p-10 text-center text-gray-500">جاري التحميل…</div>';
+        try {
+            const r = await fetch(`/api/host/inbox?status=${status}`);
+            const d = await r.json();
+            renderInbox(d.messages || [], d.unread_count || 0);
+        } catch {
+            document.getElementById('msg-list').innerHTML =
+                '<div class="p-10 text-center text-red-400">خطأ في تحميل الرسائل</div>';
+        }
+    }
+
+    function renderInbox(msgs, unread) {
+        // Badge
+        const badge = document.getElementById('unread-badge');
+        if (unread > 0) { badge.textContent = unread; badge.classList.remove('hidden'); }
+        else             { badge.classList.add('hidden'); }
+
+        if (!msgs.length) {
+            document.getElementById('msg-list').innerHTML =
+                '<div class="p-10 text-center text-gray-500">لا توجد رسائل في هذا القسم</div>';
+            return;
+        }
+
+        document.getElementById('msg-list').innerHTML = msgs.map(m => `
+            <div class="msg-row px-5 py-4 ${m.status === 'unread' ? 'unread' : ''}"
+                 onclick="openMsg(${m.id})">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            ${m.status === 'unread' ? '<span class="w-2 h-2 bg-blue-500 rounded-full shrink-0"></span>' : ''}
+                            <span class="font-bold text-white text-sm truncate">${escHtml(m.subject)}</span>
+                            <span class="text-xs px-2 py-0.5 rounded-full badge-urgency-${m.priority || 'normal'}">${prioLabel(m.priority)}</span>
+                            ${m.status === 'replied' ? '<span class="text-xs text-emerald-400">↩️ تم الرد</span>' : ''}
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">من: ${escHtml(m.from_user_name || '')} — ${escHtml(m.farm_name || '')}</p>
+                        <p class="text-xs text-gray-600 mt-1 truncate">${escHtml(m.message || '').substring(0, 80)}…</p>
+                    </div>
+                    <div class="text-xs text-gray-600 shrink-0">${fmtDate(m.created_at)}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // ── Open message ─────────────────────────────────────────
+    async function openMsg(id) {
+        currentMsgId = id;
+        try {
+            const r = await fetch(`/api/host/inbox/${id}`);
+            const d = await r.json();
+            const m = d.message;
+            document.getElementById('modal-subject').textContent = m.subject;
+            document.getElementById('modal-from').textContent    = m.from_user_name || 'غير معروف';
+            document.getElementById('modal-farm').textContent    = m.farm_name || '—';
+            document.getElementById('modal-date').textContent    = fmtDate(m.created_at);
+            document.getElementById('modal-email').textContent   = m.from_email  || '—';
+            document.getElementById('modal-body').innerHTML      = escHtml(m.message).replace(/\n/g,'<br>');
+            document.getElementById('reply-text').value = '';
+            document.getElementById('modal-result').classList.add('hidden');
+            document.getElementById('msg-modal').classList.remove('hidden');
+            loadInbox(currentFilter); // refresh unread
+        } catch { alert('تعذر تحميل الرسالة'); }
+    }
+
+    function closeModal() {
+        document.getElementById('msg-modal').classList.add('hidden');
+        currentMsgId = null;
+    }
+
+    // ── Send reply ────────────────────────────────────────────
+    async function sendReply() {
+        const txt = document.getElementById('reply-text').value.trim();
+        if (!txt) return showModalResult('اكتب رداً أولاً', false);
+        try {
+            const r = await fetch(`/api/host/inbox/${currentMsgId}/reply`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({reply: txt}),
+            });
+            const d = await r.json();
+            showModalResult(d.success ? '✅ تم إرسال الرد!' : ('❌ ' + (d.error || 'فشل')), d.success);
+            if (d.success) { setTimeout(() => { closeModal(); loadInbox(currentFilter); }, 1800); }
+        } catch { showModalResult('خطأ في الاتصال بالسيرفر', false); }
+    }
+
+    async function markReplied() {
+        await fetch(`/api/host/inbox/${currentMsgId}/mark-replied`, {method: 'POST'});
+        closeModal();
+        loadInbox(currentFilter);
+    }
+
+    // ── Helpers ───────────────────────────────────────────────
+    function switchFilter(f, btn) {
+        currentFilter = f;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        loadInbox(f);
+    }
+
+    function showModalResult(msg, ok) {
+        const el = document.getElementById('modal-result');
+        el.className = `mt-3 p-3 rounded-xl text-sm text-center font-bold ${ok ? 'bg-emerald-900/50 text-emerald-300 border border-emerald-700' : 'bg-red-900/50 text-red-300 border border-red-700'}`;
+        el.textContent = msg;
+        el.classList.remove('hidden');
+    }
+
+    function prioLabel(p) {
+        return {urgent:'🚨 عاجل', high:'⚠️ مهم', normal:'📋 عادي', low:'ℹ️ منخفض'}[p] || p || 'عادي';
+    }
+
+    function fmtDate(s) {
+        if (!s) return '';
+        try { return new Date(s).toLocaleString('ar-EG'); } catch { return s; }
+    }
+
+    function escHtml(s) {
+        return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── Init ───────────────────────────────────────────────────
+    loadInbox('all');
+    </script>
+</body>
+</html>

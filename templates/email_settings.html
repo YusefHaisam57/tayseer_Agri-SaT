@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إعدادات الإيميل — Tayseer Agri-SaT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Cairo', sans-serif; }
+        body { background: #0f172a; color: #e5e7eb; }
+        .glass { background: rgba(15,23,42,0.85); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(12px); }
+        .gradient-header { background: linear-gradient(135deg, #065f46 0%, #047857 50%, #059669 100%); }
+        .toggle-track { width:44px; height:22px; border-radius:100px; transition: background .2s; position:relative; cursor:pointer; }
+        .toggle-thumb { width:18px; height:18px; border-radius:50%; background:#fff; position:absolute; top:2px; transition:left .2s; }
+        .toggle-on  { background:#10b981; }
+        .toggle-off { background:#374151; }
+        .toggle-on  .toggle-thumb { left:24px; }
+        .toggle-off .toggle-thumb { left:2px; }
+        input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1) opacity(.5); }
+        .btn-green { background:#059669; color:#fff; font-weight:700; transition:all .2s; }
+        .btn-green:hover { background:#047857; }
+        .btn-sec { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12); color:#e5e7eb; transition:all .2s; }
+        .btn-sec:hover { background:rgba(255,255,255,0.12); }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    {% include 'sidebar.html' ignore missing %}
+
+    <div class="flex-1 flex flex-col h-screen overflow-y-auto">
+
+        <!-- Header -->
+        <header class="gradient-header text-white shadow-xl shrink-0 px-6 py-4 flex items-center justify-between">
+            <div>
+                <h1 class="text-xl font-bold">📧 إعدادات الإيميل</h1>
+                <p class="text-xs text-emerald-200 mt-0.5">تحكم في أنواع وتوقيت الإيميلات الواردة لك</p>
+            </div>
+            <span id="email-badge" class="text-xs px-3 py-1 rounded-full" style="background:rgba(16,185,129,.2);color:#34d399;border:1px solid rgba(52,211,153,.3)">
+                📬 {{ user.email or 'لا يوجد بريد' }}
+            </span>
+        </header>
+
+        <div class="flex-1 p-6 space-y-6 overflow-y-auto">
+
+            <!-- ═══════════════════ Notification Preferences ═══════════════════ -->
+            <div class="glass rounded-2xl p-6">
+                <h2 class="text-base font-bold mb-5 flex items-center gap-2">🔔 أنواع الإيميلات</h2>
+
+                <div class="space-y-4" id="pref-list">
+                    <!-- Daily updates -->
+                    <div class="flex items-center justify-between p-4 rounded-xl" style="background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.2)">
+                        <div>
+                            <p class="font-semibold text-sm">☀️ التحديث اليومي</p>
+                            <p class="text-xs text-gray-400 mt-0.5">ملخص حالة المزرعة كل يوم صباحاً</p>
+                        </div>
+                        <div class="toggle-track toggle-on" id="toggle-daily" onclick="togglePref('daily_updates', this)">
+                            <div class="toggle-thumb"></div>
+                        </div>
+                    </div>
+
+                    <!-- Weekly report -->
+                    <div class="flex items-center justify-between p-4 rounded-xl" style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.2)">
+                        <div>
+                            <p class="font-semibold text-sm">📊 التقرير الأسبوعي</p>
+                            <p class="text-xs text-gray-400 mt-0.5">تقرير شامل كل يوم أحد الساعة 8ص</p>
+                        </div>
+                        <div class="toggle-track toggle-on" id="toggle-weekly" onclick="togglePref('weekly_reports', this)">
+                            <div class="toggle-thumb"></div>
+                        </div>
+                    </div>
+
+                    <!-- Critical alerts -->
+                    <div class="flex items-center justify-between p-4 rounded-xl" style="background:rgba(220,38,38,0.07);border:1px solid rgba(220,38,38,0.2)">
+                        <div>
+                            <p class="font-semibold text-sm">🚨 التنبيهات الحرجة</p>
+                            <p class="text-xs text-gray-400 mt-0.5">تحذيرات فورية عند عطل البيفوت أو الإجهاد المائي</p>
+                        </div>
+                        <div class="toggle-track toggle-on" id="toggle-critical" onclick="togglePref('critical_alerts', this)">
+                            <div class="toggle-thumb"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preferred send time -->
+                <div class="mt-5 pt-5 border-t border-white/5">
+                    <label class="text-sm font-bold text-gray-300 block mb-2">⏰ وقت إرسال التحديث اليومي</label>
+                    <input type="time" id="pref-time" value="07:00"
+                           class="bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-xl text-sm focus:outline-none focus:border-emerald-500"/>
+                    <p class="text-xs text-gray-500 mt-1">الافتراضي: 7:00 صباحاً</p>
+                </div>
+
+                <div class="mt-6 flex flex-wrap gap-3">
+                    <button onclick="savePrefs()" class="btn-green px-6 py-2 rounded-xl text-sm shadow">💾 حفظ الإعدادات</button>
+                    <button onclick="sendTest()" class="btn-sec px-6 py-2 rounded-xl text-sm">📨 إيميل تجريبي الآن</button>
+                </div>
+
+                <div id="result-msg" class="hidden mt-4 p-3 rounded-xl text-sm text-center font-bold"></div>
+            </div>
+
+            <!-- ═══════════════════ Send Message to Host ═══════════════════ -->
+            <div class="glass rounded-2xl p-6">
+                <h2 class="text-base font-bold mb-4 flex items-center gap-2">✉️ تواصل مع الإدارة</h2>
+                <p class="text-sm text-gray-400 mb-4">رسالتك ستصل مباشرة إلى صندوق بريد الإدارة.</p>
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-xs text-gray-400 block mb-1">الموضوع</label>
+                        <input type="text" id="msg-subject" placeholder="مثال: استفسار عن بيانات NDVI"
+                               class="w-full bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-xl text-sm focus:outline-none focus:border-emerald-500"/>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 block mb-1">الأولوية</label>
+                        <select id="msg-priority"
+                                class="bg-gray-800 border border-gray-700 text-white px-4 py-2 rounded-xl text-sm focus:outline-none focus:border-emerald-500 w-40">
+                            <option value="normal">عادي</option>
+                            <option value="high">مهم</option>
+                            <option value="urgent">عاجل</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 block mb-1">الرسالة</label>
+                        <textarea id="msg-body" rows="4" placeholder="اكتب رسالتك هنا…"
+                                  class="w-full bg-gray-800 border border-gray-700 text-white px-4 py-3 rounded-xl text-sm focus:outline-none focus:border-emerald-500 resize-none"></textarea>
+                    </div>
+                    <button onclick="sendToHost()" class="btn-green px-6 py-2 rounded-xl text-sm shadow">📤 إرسال الرسالة</button>
+                    <div id="host-result" class="hidden mt-2 p-3 rounded-xl text-sm text-center font-bold"></div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════ Email Log ═══════════════════ -->
+            <div class="glass rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-base font-bold flex items-center gap-2">📋 آخر الإيميلات المرسلة</h2>
+                    <button onclick="loadLog()" class="btn-sec px-3 py-1.5 rounded-lg text-xs">🔄 تحديث</button>
+                </div>
+                <div id="email-log" class="text-sm text-gray-500 text-center py-6">جاري التحميل…</div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+    // ── Load prefs ─────────────────────────────────────────────
+    const prefs = { daily_updates: true, weekly_reports: true, critical_alerts: true };
+
+    async function loadPrefs() {
+        try {
+            const r = await fetch('/api/email/preferences');
+            const d = await r.json();
+            if (d.prefs) {
+                prefs.daily_updates   = !!d.prefs.daily_updates;
+                prefs.weekly_reports  = !!d.prefs.weekly_reports;
+                prefs.critical_alerts = !!d.prefs.critical_alerts;
+                applyToggles();
+                if (d.prefs.preferred_time)
+                    document.getElementById('pref-time').value = d.prefs.preferred_time;
+            }
+        } catch {}
+    }
+
+    function applyToggles() {
+        setToggle('toggle-daily',    prefs.daily_updates);
+        setToggle('toggle-weekly',   prefs.weekly_reports);
+        setToggle('toggle-critical', prefs.critical_alerts);
+    }
+
+    function setToggle(id, on) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.className = `toggle-track ${on ? 'toggle-on' : 'toggle-off'}`;
+    }
+
+    function togglePref(key, el) {
+        prefs[key] = !prefs[key];
+        el.className = `toggle-track ${prefs[key] ? 'toggle-on' : 'toggle-off'}`;
+    }
+
+    // ── Save prefs ─────────────────────────────────────────────
+    async function savePrefs() {
+        try {
+            const r = await fetch('/api/email/preferences', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    ...prefs,
+                    preferred_time: document.getElementById('pref-time').value,
+                }),
+            });
+            const d = await r.json();
+            showResult('result-msg', d.success ? '✅ تم حفظ الإعدادات!' : '❌ فشل الحفظ', d.success);
+        } catch {
+            showResult('result-msg', 'خطأ في الاتصال بالسيرفر', false);
+        }
+    }
+
+    // ── Test email ─────────────────────────────────────────────
+    async function sendTest() {
+        showResult('result-msg', 'جاري الإرسال…', true);
+        try {
+            const r = await fetch('/api/email/send-test', {method: 'POST'});
+            const d = await r.json();
+            showResult('result-msg',
+                d.success || d.demo ? '✅ تم الإرسال! راجع صندوق بريدك.' : ('❌ ' + (d.error||'')),
+                d.success || d.demo);
+        } catch {
+            showResult('result-msg', 'خطأ في الاتصال بالسيرفر', false);
+        }
+    }
+
+    // ── Send to host ───────────────────────────────────────────
+    async function sendToHost() {
+        const subject  = document.getElementById('msg-subject').value.trim();
+        const message  = document.getElementById('msg-body').value.trim();
+        const priority = document.getElementById('msg-priority').value;
+        if (!message) return showResult('host-result', 'الرجاء كتابة الرسالة أولاً', false);
+        try {
+            const r = await fetch('/api/client/send-message', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({subject: subject || 'استفسار', message, priority}),
+            });
+            const d = await r.json();
+            showResult('host-result', d.success ? '✅ تم إرسال رسالتك للإدارة!' : ('❌ ' + (d.error||'')), d.success);
+            if (d.success) {
+                document.getElementById('msg-subject').value = '';
+                document.getElementById('msg-body').value = '';
+            }
+        } catch { showResult('host-result', 'خطأ في الاتصال بالسيرفر', false); }
+    }
+
+    // ── Email log ──────────────────────────────────────────────
+    async function loadLog() {
+        document.getElementById('email-log').innerHTML = '<p class="text-center py-4 text-gray-600">جاري التحميل…</p>';
+        try {
+            const r = await fetch('/api/email/log?limit=10');
+            const d = await r.json();
+            if (!d.logs || !d.logs.length) {
+                document.getElementById('email-log').innerHTML = '<p class="text-center py-6 text-gray-600">لم يتم إرسال أي إيميلات بعد.</p>';
+                return;
+            }
+            document.getElementById('email-log').innerHTML = `
+            <table class="w-full text-xs">
+                <thead><tr class="text-gray-500 border-b border-white/5">
+                    <th class="text-right pb-2">الموضوع</th>
+                    <th class="text-right pb-2">المستلم</th>
+                    <th class="text-right pb-2">الحالة</th>
+                    <th class="text-right pb-2">التاريخ</th>
+                </tr></thead>
+                <tbody>${d.logs.map(l => `
+                    <tr class="border-b border-white/5 py-2">
+                        <td class="py-2 truncate max-w-[160px]">${escHtml(l.subject)}</td>
+                        <td class="py-2 text-gray-400">${escHtml(l.recipient_email||'')}</td>
+                        <td class="py-2">${statusBadge(l.status)}</td>
+                        <td class="py-2 text-gray-500">${l.sent_at ? l.sent_at.slice(0,16) : ''}</td>
+                    </tr>`).join('')}</tbody>
+            </table>`;
+        } catch {
+            document.getElementById('email-log').innerHTML = '<p class="text-center py-4 text-red-400">خطأ في تحميل السجل</p>';
+        }
+    }
+
+    // ── Helpers ────────────────────────────────────────────────
+    function showResult(id, msg, ok) {
+        const el = document.getElementById(id);
+        el.className = `mt-3 p-3 rounded-xl text-sm text-center font-bold ${ok
+            ? 'bg-emerald-900/40 text-emerald-300 border border-emerald-700'
+            : 'bg-red-900/40 text-red-300 border border-red-700'}`;
+        el.textContent = msg;
+        el.classList.remove('hidden');
+        setTimeout(() => el.classList.add('hidden'), 5000);
+    }
+
+    function statusBadge(s) {
+        const map = {sent:'✅ مرسل', failed:'❌ فشل', demo:'🔵 تجريبي'};
+        return `<span class="px-2 py-0.5 rounded-full text-xs" style="background:rgba(255,255,255,.06)">${map[s]||s}</span>`;
+    }
+
+    function escHtml(s) { return String(s||'').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // ── Init ───────────────────────────────────────────────────
+    loadPrefs();
+    loadLog();
+    </script>
+</body>
+</html>

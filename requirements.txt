@@ -1,0 +1,63 @@
+# ============================================================
+# Tayseer Agri-SaT — Python Requirements
+# Install with: pip install -r requirements.txt
+# ============================================================
+
+# ── Web Framework ────────────────────────────────────────────
+Flask==3.0.3
+Flask-Login==0.6.3
+Flask-WTF==1.2.1
+Werkzeug==3.0.3
+itsdangerous==2.2.0
+
+# ── Database ─────────────────────────────────────────────────
+# SQLite is part of Python stdlib — no extra install needed
+
+# ── OTP / Security ──────────────────────────────────────────
+pyotp==2.9.0
+
+# ── SMS & Messaging ──────────────────────────────────────────
+twilio==9.2.3
+
+# ── Google Earth Engine ──────────────────────────────────────
+earthengine-api==0.1.385
+
+# ── Machine Learning ─────────────────────────────────────────
+catboost==1.2.5
+waitress==3.0.0
+gunicorn==22.0.0   # For Linux deployments
+scikit-learn==1.5.0
+pandas==2.2.2
+numpy==1.26.4
+joblib==1.4.2
+
+# ── Geospatial ───────────────────────────────────────────────
+geopy==2.4.1
+
+# ── HTTP / Weather API ───────────────────────────────────────
+requests==2.32.3
+
+# ── Telegram Bot ─────────────────────────────────────────────
+python-telegram-bot==21.3
+
+# ── Email ────────────────────────────────────────────────────
+# smtplib is part of Python stdlib — no extra install needed
+
+# ── Utilities ────────────────────────────────────────────────
+python-dotenv==1.0.1
+# gunicorn already listed above (line 28)
+APScheduler==3.10.4   # for background GEE polling
+
+# ── Step 9: Report Generation ─────────────────────────────────
+python-docx==1.1.2      # Word (.docx) reports
+openpyxl==3.1.5         # Excel (.xlsx) reports
+reportlab==4.2.5        # PDF reports
+matplotlib==3.9.2       # NDVI chart images embedded in reports
+
+# ── Step 10: Security & Multi-Tenancy ─────────────────────────
+bcrypt==4.2.1           # Password hashing (rounds=12)
+PyJWT==2.9.0            # JWT token generation & verification
+cryptography==43.0.3    # Fernet AES-256 encryption for PII/API keys
+
+# ── Step 12: Carbon-Sat V2.0 ──────────────────────────────────
+scipy==1.11.3           # Statistical computations for carbon models

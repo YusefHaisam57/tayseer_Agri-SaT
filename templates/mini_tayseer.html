@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mini-Tayseer — الشات الذكي أوفلاين | Tayseer-AgriSaT</title>
+    <meta name="description"
+        content="Mini-Tayseer: مساعد زراعي ذكي يعمل بدون إنترنت — اسأل عن ريّك، محصولك، وبيفوتك." />
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ BUILD_VERSION }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}?v={{ BUILD_VERSION }}" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap"
+        rel="stylesheet" />
+    <style>
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: none;
+            }
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: .4
+            }
+        }
+
+        .quick-btn {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            color: #d1fae5;
+            border-radius: 20px;
+            padding: 5px 14px;
+            font-size: 12px;
+            font-family: Cairo, sans-serif;
+            cursor: pointer;
+            transition: background .2s, border-color .2s;
+        }
+
+        .quick-btn:hover {
+            background: rgba(16, 185, 129, 0.18);
+            border-color: rgba(16, 185, 129, 0.5);
+        }
+
+        #mini-chat-messages::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #mini-chat-messages::-webkit-scrollbar-thumb {
+            background: rgba(16, 185, 129, 0.3);
+            border-radius: 2px;
+        }
+
+        .chat-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-family: Cairo, sans-serif;
+            color: #f3f4f6;
+            outline: none;
+            width: 100%;
+            transition: border-color .2s;
+        }
+
+        .chat-input:focus {
+            border-color: rgba(16, 185, 129, 0.5);
+        }
+
+        .chat-input::placeholder {
+            color: #6b7280;
+        }
+    </style>
+</head>
+
+<body class="flex">
+
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar w-64 min-h-screen flex flex-col p-5 flex-shrink-0 hidden md:flex">
+        <!-- BRAND BLOCK -->
+                <!-- BRAND BLOCK -->
+        <div class="flex flex-col items-center justify-center text-center pb-6 mb-6 border-b border-white/10">
+            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Tayseer-AgriSaT" class="w-44 h-auto drop-shadow-md mb-2 object-contain" />
+        </div>
+        <nav class="flex flex-col gap-1 flex-1">
+            <a class="nav-link" href="/dashboard">🏡 لوحة التحكم</a>
+            <a class="nav-link" href="/risks" style="color:#fbbf24;font-weight:700;">⚠️ المخاطر الأساسية</a>
+            <a href="/map-view" class="nav-link" data-ar="🗺️ خريطة المخاطر" data-en="🗺️ Risk Map">🗺️ خريطة المخاطر</a>
+            <a class="nav-link" href="/profile">👤 بيانات العميل</a>
+            <div class="border-t border-white/10 my-2"></div>
+            <a class="nav-link active" href="/chat" style="color:#10b981;font-weight:700;">🤖 مساعد تيسير الذكي</a>
+            <a class="nav-link" href="/whatsapp">📱 واتساب</a>
+            <a class="nav-link" href="/telegram">✈️ تليجرام</a>
+        </nav>
+        <div class="pt-5 border-t border-white/10">
+            <a href="/auth/logout"
+                class="flex items-center gap-2 text-sm text-gray-500 hover:text-red-400 transition font-semibold">
+                🚪 تسجيل الخروج
+            </a>
+            <div class="text-center mt-3 pt-2 border-t border-white/5" style="font-size:10px; color:#64748b; font-family:monospace;">
+                <span class="inline-block px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    Tayseer v{{ BUILD_VERSION }}
+                </span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ── MAIN ── -->
+    <main class="flex-1 overflow-y-auto p-4 md:p-7 space-y-5 relative" style="max-width:900px;margin:0 auto;">
+
+        <!-- Mobile Header -->
+        <div class="flex items-center justify-between md:hidden mb-2">
+            <div class="flex items-center gap-2">
+                <span class="text-3xl">🤖</span>
+                <h1 class="text-xl font-extrabold text-white">Mini-Tayseer</h1>
+            </div>
+            <a href="/dashboard" class="btn btn-green text-xs">🏡 لوحة التحكم</a>
+        </div>
+
+        <!-- Hero Banner -->
+        <div class="glass p-5 flex items-center gap-5">
+            <div style="font-size:3rem;flex-shrink:0;">🤖</div>
+            <div>
+                <h2 class="text-xl font-extrabold text-white mb-1">Mini-Tayseer — الشات الذكي</h2>
+                <p class="text-gray-400 text-sm">يعمل حتى بدون إنترنت 📵 — بيانات مزرعتك محفوظة محلياً.</p>
+                <div class="flex items-center gap-2 mt-2">
+                    <span class="text-xs" id="connection-status" style="color:#9ca3af;">
+                        <span
+                            style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#6b7280;margin-left:4px;"></span>
+                        جاري التحقق…
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Window -->
+        <div class="glass p-5" style="display:flex;flex-direction:column;gap:12px;">
+            <!-- Chat Header Row -->
+            <div class="flex items-center justify-between">
+                <h3 class="text-base font-bold text-white flex items-center gap-2">
+                    💬 <span>المحادثة</span>
+                </h3>
+                <button onclick="MiniTayseer.clearChat()"
+                    style="font-size:11px;color:#6b7280;background:none;border:none;cursor:pointer;font-family:Cairo,sans-serif;">
+                    🗑️ مسح
+                </button>
+            </div>
+
+            <!-- Messages Area -->
+            <div id="mini-chat-messages"
+                style="min-height:220px;max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-bottom:4px;">
+            </div>
+
+            <!-- Quick Action Buttons -->
+            <div>
+                <p class="text-xs text-gray-500 mb-2">أسئلة سريعة:</p>
+                <div class="flex flex-wrap gap-2">
+                    <button class="quick-btn" onclick="MiniTayseer.askQuick('أروي النهاردة؟')">💧 ري؟</button>
+                    <button class="quick-btn" onclick="MiniTayseer.askQuick('إيه حالة المحصول؟')">🌿 المحصول</button>
+                    <button class="quick-btn" onclick="MiniTayseer.askQuick('في عطل في البيفوت؟')">🔧 بيفوت</button>
+                    <button class="quick-btn" onclick="MiniTayseer.askQuick('كام ساعة أشغل الطلمبة؟')">⏱️ ساعات
+                        الطلمبة</button>
+                    <button class="quick-btn" onclick="MiniTayseer.askQuick('الجو عامل إيه؟')">🌤️ الطقس</button>
+                    <button class="quick-btn" onclick="MiniTayseer.askQuick('إيه كمية الكتلة الحيوية؟')">🌾
+                        الكتلة</button>
+                </div>
+            </div>
+
+            <!-- Input Row -->
+            <div id="image-preview-badge" style="display:none;background:rgba(16,185,129,0.15);border:1px solid #10b981;border-radius:8px;padding:4px 10px;font-size:12px;color:#6ee7b7;margin-bottom:6px;"></div>
+            <form onsubmit="MiniTayseer.sendMessage(event)" style="display:flex;gap:8px;align-items:center;">
+                <input type="file" id="chat-image-input" accept="image/*" style="display:none;" onchange="MiniTayseer.handleImageSelected(this)" />
+                <button type="button" onclick="document.getElementById('chat-image-input').click()" title="إرفاق صورة للمحصول أو العطل"
+                    style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#d1d5db;border-radius:12px;padding:10px 14px;font-size:16px;cursor:pointer;flex-shrink:0;">
+                    📷
+                </button>
+                <input id="mini-chat-input" type="text" class="chat-input flex-1"
+                    placeholder="اكتب سؤالك بالعامية أو ارفع صورة… (مثال: افحص الورقة دي)" autocomplete="off" dir="rtl" />
+                <button type="submit" style="background:linear-gradient(135deg,#10b981,#059669);color:#fff;border:none;
+                    border-radius:12px;padding:10px 18px;font-family:Cairo,sans-serif;font-weight:700;
+                    font-size:14px;cursor:pointer;flex-shrink:0;transition:opacity .2s;"
+                    onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+                    إرسال ➤
+                </button>
+            </form>
+
+            <!-- Sync Row -->
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#6b7280;">
+                <span id="last-sync">آخر تحديث: جاري التحميل…</span>
+                <button id="sync-btn" onclick="MiniTayseer.syncFarmData()"
+                    style="color:#10b981;background:none;border:none;cursor:pointer;font-family:Cairo,sans-serif;font-size:12px;font-weight:600;">
+                    🔄 تحديث البيانات
+                </button>
+            </div>
+        </div>
+
+        <!-- How It Works Card -->
+        <div class="glass p-5">
+            <h4 class="text-white font-bold mb-3 flex items-center gap-2">📖 إزاي Mini-Tayseer بيشتغل؟</h4>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;" class="max-md:grid-cols-1">
+                <div
+                    style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.15);border-radius:12px;padding:14px;text-align:center;">
+                    <div style="font-size:2rem;margin-bottom:6px;">📡</div>
+                    <p style="color:#6ee7b7;font-weight:700;font-size:12px;">1. تحميل البيانات</p>
+                    <p style="color:#9ca3af;font-size:11px;margin-top:4px;">لما تكون متصل، هيحمّل بيانات مزرعتك كاملة في
+                        الجهاز</p>
+                </div>
+                <div
+                    style="background:rgba(59,130,246,0.06);border:1px solid rgba(59,130,246,0.15);border-radius:12px;padding:14px;text-align:center;">
+                    <div style="font-size:2rem;margin-bottom:6px;">📵</div>
+                    <p style="color:#93c5fd;font-weight:700;font-size:12px;">2. أوفلاين</p>
+                    <p style="color:#9ca3af;font-size:11px;margin-top:4px;">حتى لو انقطع النت، الشات يرد من البيانات
+                        المحفوظة فوراً</p>
+                </div>
+                <div
+                    style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.15);border-radius:12px;padding:14px;text-align:center;">
+                    <div style="font-size:2rem;margin-bottom:6px;">⚡</div>
+                    <p style="color:#fcd34d;font-weight:700;font-size:12px;">3. رد فوري</p>
+                    <p style="color:#9ca3af;font-size:11px;margin-top:4px;">ردود في أقل من 500ms بدون أي تأخير</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="h-16"></div>
+    </main>
+
+    <!-- NLP + Chat scripts -->
+    <script src="{{ url_for('static', filename='js/nlp-engine.js') }}?v={{ BUILD_VERSION }}"></script>
+    <script src="{{ url_for('static', filename='js/mini-chat.js') }}?v={{ BUILD_VERSION }}"></script>
+
+</body>
+
+</html>

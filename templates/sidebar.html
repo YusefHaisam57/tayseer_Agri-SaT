@@ -1,0 +1,108 @@
+<!-- ══════════════════════════════════════════════════════════
+     sidebar.html — Shared Navigation Sidebar Partial
+     Requires: user object in render context
+     ══════════════════════════════════════════════════════════ -->
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  .tayseer-sidebar {
+    width: 240px;
+    min-height: 100vh;
+    background: linear-gradient(180deg, #0a1628 0%, #0f1e3a 50%, #0a1628 100%);
+    border-left: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    flex-direction: column;
+    padding: 20px 14px;
+    flex-shrink: 0;
+    font-family: 'Cairo', sans-serif;
+    position: relative;
+    z-index: 40;
+  }
+  .tayseer-sidebar a, .tayseer-sidebar .s-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 10px;
+    color: #94a3b8;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all .18s;
+    cursor: pointer;
+    margin-bottom: 2px;
+  }
+  .tayseer-sidebar a:hover, .tayseer-sidebar .s-link:hover {
+    background: rgba(255,255,255,0.07);
+    color: #e2e8f0;
+  }
+  .tayseer-sidebar a.active, .tayseer-sidebar .s-active {
+    background: rgba(16,185,129,0.15);
+    color: #34d399;
+    border-right: 3px solid #10b981;
+  }
+  .tayseer-sidebar a.s-admin {
+    color: #f87171;
+  }
+  .tayseer-sidebar a.s-admin:hover {
+    background: rgba(239,68,68,0.12);
+    color: #fca5a5;
+  }
+  .s-divider {
+    border-top: 1px solid rgba(255,255,255,0.07);
+    margin: 10px 0;
+  }
+  .s-brand {
+    text-align: center;
+    padding-bottom: 18px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .s-brand img {
+    height: 52px;
+    width: auto;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 8px rgba(16,185,129,0.3));
+  }
+  .s-logout {
+    margin-top: auto;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+  }
+</style>
+
+<aside class="tayseer-sidebar">
+  <!-- Brand -->
+  <div class="s-brand">
+    <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Tayseer Agri-SaT"
+         onerror="this.outerHTML='<span style=\'font-size:22px;font-weight:800;color:#10b981\'>🌾 Tayseer</span>'">
+  </div>
+
+  <!-- Navigation -->
+  <nav>
+    <a href="/dashboard" {% if request.path == '/dashboard' %}class="active"{% endif %}>🏠 لوحة التحكم</a>
+    <a href="/risks" {% if request.path == '/risks' %}class="active"{% endif %}>🚨 المخاطر الأساسية</a>
+    <a href="/chat" {% if request.path == '/chat' %}class="active"{% endif %}>🤖 المساعد الذكي</a>
+    <a href="/farm-setup" {% if request.path == '/farm-setup' %}class="active"{% endif %}>🌾 المزارع والحقول</a>
+    <a href="/map-view" {% if request.path == '/map-view' %}class="active"{% endif %}>🗺️ الخريطة</a>
+    <a href="/reports" {% if request.path == '/reports' %}class="active"{% endif %}>📊 التقارير</a>
+    <a href="/carbon" {% if request.path == '/carbon' %}class="active"{% endif %}>🌱 مراقبة الكربون</a>
+    <a href="/integrations" {% if request.path == '/integrations' %}class="active"{% endif %}>🔌 التكاملات</a>
+    <a href="/settings" {% if request.path == '/settings' %}class="active"{% endif %}>⚙️ الإعدادات</a>
+
+    {% if user and user.is_admin %}
+    <div class="s-divider"></div>
+    <a href="/admin" class="s-admin" {% if request.path == '/admin' %}class="active s-admin"{% endif %}>🛡️ الإدارة</a>
+    <a href="/host-inbox" class="s-admin" {% if request.path == '/host-inbox' %}style="background:rgba(239,68,68,0.15)"{% endif %}>📥 صندوق الوارد</a>
+    {% endif %}
+  </nav>
+
+  <!-- Logout & Version Indicator -->
+  <div class="s-logout">
+    <a href="/auth/logout" style="color:#6b7280;">🚪 تسجيل الخروج</a>
+    <div style="text-align:center;margin-top:10px;font-size:10px;color:#64748b;font-family:monospace;">
+      <span style="display:inline-block;padding:2px 8px;border-radius:6px;background:rgba(16,185,129,0.1);color:#34d399;border:1px solid rgba(16,185,129,0.2);">
+        Tayseer v{{ BUILD_VERSION }}
+      </span>
+    </div>
+  </div>
+</aside>

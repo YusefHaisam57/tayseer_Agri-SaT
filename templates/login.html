@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-ar="Tayseer-AgriSaT — تسجيل الحساب وتقسيم المزرعة" data-en="Tayseer-AgriSaT — Login & Farm Zoning">
+        Tayseer-AgriSaT — تسجيل الحساب وتقسيم المزرعة</title>
+    <meta name="description" content="منصة تيسير للزراعة بالأقمار الصناعية — سجّل دخولك وارسم حدود مزرعتك" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Leaflet-Geoman (for drawing polygons) -->
+    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.14.2/dist/leaflet-geoman.css" />
+    <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.14.2/dist/leaflet-geoman.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap"
+        rel="stylesheet" />
+
+    <!-- External CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+
+<body class="flex items-center justify-center p-4">
+
+    <div class="bg-particles">
+        <div class="particle w-96 h-96 bg-green-600" style="top:10%;left:5%;animation-delay:0s;"></div>
+        <div class="particle w-64 h-64 bg-emerald-400" style="top:60%;right:8%;animation-delay:3s;"></div>
+        <div class="particle w-48 h-48 bg-teal-500" style="bottom:15%;left:20%;animation-delay:6s;"></div>
+    </div>
+
+    <div class="glass-card w-full max-w-2xl p-6 md:p-8 relative z-10" id="main-card">
+
+        <!-- Logo -->
+        <div class="text-center mb-6">
+            <div class="text-6xl mb-2 drop-shadow-[0_0_15px_rgba(82,183,136,0.6)]">🛰️</div>
+            <h1 class="text-3xl font-extrabold text-white mb-1">Tayseer-AgriSaT</h1>
+            <p class="text-green-400 text-sm font-medium" data-ar="خطّط مزرعتك وراقبها بالذكاء الاصطناعي"
+                data-en="Plan and monitor your farm with AI">خطّط مزرعتك وراقبها بالذكاء الاصطناعي</p>
+        </div>
+
+        <!-- Global Alert -->
+        <div class="alert" id="global-alert"></div>
+
+        <!-- ─── Login / Register Tabs ─── -->
+        <div id="auth-tabs" class="flex gap-2 bg-white/5 rounded-xl p-1 mb-6">
+            <button class="tab-btn tab-active flex-1" id="tab-login" onclick="switchTab('login')" data-ar="تسجيل الدخول"
+                data-en="Login">تسجيل الدخول</button>
+            <button class="tab-btn tab-inactive flex-1" id="tab-register" onclick="switchTab('register')"
+                data-ar="حساب جديد" data-en="Register">حساب جديد</button>
+        </div>
+
+        <!-- ─── LOGIN FORM ─── -->
+        <form id="login-form" class="space-y-4" onsubmit="submitLogin(event)">
+            <div class="relative">
+                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-green-400 text-xl">✉️</span>
+                <input class="form-input" type="email" id="login-email" data-ar-placeholder="البريد الإلكتروني"
+                    data-en-placeholder="Email Address" placeholder="البريد الإلكتروني" required />
+            </div>
+            <div class="relative">
+                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-green-400 text-xl">🔒</span>
+                <input class="form-input" type="password" id="login-password" data-ar-placeholder="كلمة المرور"
+                    data-en-placeholder="Password" placeholder="كلمة المرور" required />
+            </div>
+            <button type="submit" class="btn-primary mt-4" id="login-btn" data-ar="دخول إلى المزرعة"
+                data-en="Enter Farm">دخول إلى المزرعة</button>
+        </form>
+
+
+        <!-- ─── REGISTER WIZARD ─── -->
+        <div id="register-wizard" class="hidden-section">
+
+            <!-- Step 1: Personal Info -->
+            <form id="reg-step-1" class="space-y-3" onsubmit="nextStep(event)">
+                <h3 class="text-white font-bold mb-3 border-b border-white/10 pb-2" data-ar="1. البيانات الأساسية"
+                    data-en="1. Personal Info">1. البيانات الأساسية</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="relative md:col-span-2">
+                        <span class="absolute right-4 top-1/2 -translate-y-1/2 text-green-400">👤</span>
+                        <input class="form-input" type="text" id="reg-name" data-ar-placeholder="الاسم الكامل"
+                            data-en-placeholder="Full Name" placeholder="الاسم الكامل" required />
+                    </div>
+                    <div class="relative">
+                        <span class="absolute right-4 top-1/2 -translate-y-1/2 text-green-400">📞</span>
+                        <input class="form-input" type="tel" id="reg-phone" data-ar-placeholder="رقم الهاتف (+20...)"
+                            data-en-placeholder="Phone Number (+20...)" placeholder="رقم الهاتف (+20...)" required
+                            dir="ltr" style="text-align:right" />
+                    </div>
+                    <div class="relative">
+                        <span class="absolute right-4 top-1/2 -translate-y-1/2 text-green-400">✉️</span>
+                        <input class="form-input" type="email" id="reg-email" data-ar-placeholder="الإيميل"
+                            data-en-placeholder="Email" placeholder="الإيميل" required />
+                    </div>
+                    <div class="relative md:col-span-2">
+                        <span class="absolute right-4 top-1/2 -translate-y-1/2 text-green-400">🔒</span>
+                        <input class="form-input" type="password" id="reg-password" data-ar-placeholder="كلمة المرور"
+                            data-en-placeholder="Password" placeholder="كلمة المرور" required />
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary mt-4" data-ar="التالي: رسم المزرعة 🗺️"
+                    data-en="Next: Draw Farm 🗺️">التالي: رسم المزرعة 🗺️</button>
+            </form>
+
+            <!-- Step 2: Map Zoning -->
+            <div id="reg-step-2" class="hidden-section space-y-4">
+                <div class="flex items-center justify-between border-b border-white/10 pb-2 mb-2">
+                    <h3 class="text-white font-bold" data-ar="2. ارسم حدود مزرعتك" data-en="2. Draw Your Farm">2. ارسم
+                        حدود مزرعتك</h3>
+                    <button onclick="prevStep()" class="text-sm text-gray-400 hover:text-white" data-ar="← عودة"
+                        data-en="← Back">← عودة</button>
+                </div>
+
+                <p class="text-sm text-gray-300 mb-2">
+                    <span data-ar="أولاً: ابحث عن موقعك أو استخدم GPS."
+                        data-en="First: Search your location or use GPS.">أولاً: ابحث عن موقعك أو استخدم GPS.</span><br>
+                    <span
+                        data-ar="ثانياً: اختر نوع المنطقة من القائمة وارسمها على الخريطة المفتوحة أمامك (محصول ألف، محصول باء، بيت، مركز الري...)."
+                        data-en="Second: Select an area type and draw it on the map (Crop A, House, Pivot...).">ثانياً:
+                        اختر نوع المنطقة من القائمة وارسمها على الخريطة المفتوحة أمامك (محصول ألف، محصول باء، بيت، مركز
+                        الري...).</span>
+                </p>
+
+                <!-- Location shortcuts -->
+                <div class="flex gap-2 mb-2">
+                    <button onclick="detectGPS()" class="btn-secondary text-xs flex-1" id="gps-btn"
+                        data-ar="📵 موقعي بدقة عالية" data-en="📵 High Accuracy GPS">
+                        📵 موقعي بدقة عالية
+                    </button>
+                </div>
+                <div class="flex gap-1 mb-3">
+                    <input type="text" id="map-search" class="form-input py-2 text-sm flex-1"
+                        data-ar-placeholder="ابحث: مثال: الفيوم، نجع حمادي، مرسى مطروح..."
+                        data-en-placeholder="Search: e.g. Cairo, Giza, Marsa Matrouh..."
+                        placeholder="ابحث: مثال: الفيوم، نجع حمادي، مرسى مطروح..."
+                        onkeydown="if(event.key==='Enter'){event.preventDefault();searchMap();}" />
+                    <button type="button" id="search-btn" onclick="searchMap()"
+                        class="bg-green-600 text-white rounded-lg px-3 hover:bg-green-500 text-sm font-bold">🔍
+                    </button>
+                </div>
+                <!-- Search results dropdown -->
+                <div id="search-results" style="display:none;" class="mb-2 glass rounded-xl overflow-hidden"></div>
+
+                <!-- The Map -->
+                <div id="map-container">
+                    <div id="drawing-map"></div>
+
+                    <!-- Drawing Overlay -->
+                    <div class="map-overlay">
+                        <label class="block text-xs text-gray-300 mb-1" data-ar="اسم المنطقة / المحصول (اختياري):"
+                            data-en="Area/Crop Name (Optional):">اسم المنطقة / المحصول (اختياري):</label>
+                        <input type="text" id="draw-name" class="form-input text-sm py-1 mb-2 px-3"
+                            data-ar-placeholder="مثال: حقل الذرة الشمالي" data-en-placeholder="e.g. North Corn Field"
+                            placeholder="مثال: حقل الذرة الشمالي" />
+
+                        <label class="block text-xs text-gray-300 mb-1" data-ar="نوع المنطقة التي سترسمها الآن:"
+                            data-en="Type of area to draw now:">نوع المنطقة التي سترسمها الآن:</label>
+                        <select id="draw-type" class="form-select text-sm py-1 mb-2">
+                            <option value="crop" data-ar="🌾 حقل محصول" data-en="🌾 Crop Field">🌾 حقل محصول</option>
+                            <option value="house" data-ar="🏠 مبنى / سكن" data-en="🏠 House / Building">🏠 مبنى / سكن
+                            </option>
+                            <option value="pivot" data-ar="🔄 بيفوت (دائرة ري)" data-en="🔄 Pivot (Irrigation)">🔄 بيفوت
+                                (دائرة ري)</option>
+                            <option value="water" data-ar="💧 حوض مياه" data-en="💧 Water Basin">💧 حوض مياه</option>
+                            <option value="road" data-ar="🛣️ طريق داخلي" data-en="🛣️ Internal Road">🛣️ طريق داخلي
+                            </option>
+                        </select>
+
+                        <div class="block text-xs text-green-400 mb-1 font-semibold mt-3" data-ar="المناطق المرسومة:"
+                            data-en="Drawn Areas:">المناطق المرسومة:</div>
+                        <div id="feature-list" class="feature-list text-white">
+                            <div class="text-xs text-gray-500 italic"
+                                data-ar="لم ترسم شيئاً بعد. استخدم أدوات الرسم يسار الخريطة."
+                                data-en="You haven't drawn anything yet. Use the tools on the left.">لم ترسم شيئاً بعد.
+                                استخدم أدوات الرسم يسار
+                                الخريطة.</div>
+                        </div>
+                        <div id="total-area-display"
+                            style="display:none;margin-top:8px;padding:6px 10px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.25);border-radius:8px;font-size:11px;color:#4ade80;text-align:center;font-weight:600;">
+                        </div>
+                        <!-- Sector Tool Button -->
+                        <button type="button" onclick="openSectorModal()" class="btn-secondary text-xs w-full mt-2"
+                            style="margin-top:10px;padding:6px;font-size:11px;border-radius:8px;"
+                            data-ar="🌙 رسم قوس / ربع دائرة" data-en="🌙 Draw Arc / Quarter Circle">
+                            🌙 رسم قوس / ربع دائرة
+                        </button>
+                    </div>
+                </div>
+
+                <button onclick="submitRegistration()" class="btn-primary" id="final-reg-btn"
+                    data-ar="إنشاء الحساب وبدء الزراعة 🚀" data-en="Create Account & Start Farming 🚀">إنشاء الحساب وبدء
+                    الزراعة
+                    🚀</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ─── Sector Modal ─── -->
+    <div id="sector-modal"
+        style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.7);display:none;align-items:center;justify-content:center;">
+        <div
+            style="background:linear-gradient(135deg,#0f2417,#0a1f12);border:1px solid rgba(82,183,136,0.3);border-radius:18px;padding:24px;width:90%;max-width:380px;">
+            <h4 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:16px;" data-ar="🌙 رسم قوس دائري"
+                data-en="🌙 Draw Arc">🌙 رسم قوس دائري</h4>
+
+            <label style="color:#9ca3af;font-size:12px;" data-ar="نوع القوس:" data-en="Arc Type:">نوع القوس:</label>
+            <select id="sector-type" class="form-select text-sm py-1 mb-3" style="margin-top:4px;">
+                <option value="90" data-ar="⬛ ربع دائرة (90°)" data-en="⬛ Quarter Circle (90°)">⬛ ربع دائرة (90°)
+                </option>
+                <option value="180" selected data-ar="🌙 نصف دائرة (180°)" data-en="🌙 Half Circle (180°)">🌙 نصف دائرة
+                    (180°)</option>
+                <option value="270" data-ar="🌓 ثلاثة أرباع (270°)" data-en="🌓 Three Quarters (270°)">🌓 ثلاثة أرباع
+                    (270°)</option>
+                <option value="custom" data-ar="✏️ زاوية مخصصة" data-en="✏️ Custom Angle">✏️ زاوية مخصصة</option>
+            </select>
+
+            <div id="sector-custom-row" style="display:none;margin-bottom:12px;">
+                <label style="color:#9ca3af;font-size:12px;" data-ar="الزاوية (درجة):" data-en="Angle (degree):">الزاوية
+                    (درجة):</label>
+                <input type="number" id="sector-custom-angle" min="1" max="359" value="120"
+                    class="form-input text-sm py-1 mt-1" style="width:100%;" />
+            </div>
+
+            <label style="color:#9ca3af;font-size:12px;" data-ar="الاتجاه (بداية القوس):"
+                data-en="Direction (Arc Start):">الاتجاه (بداية القوس):</label>
+            <select id="sector-dir" class="form-select text-sm py-1 mb-3" style="margin-top:4px;">
+                <option value="0" data-ar="⬆️ شمال" data-en="⬆️ North">⬆️ شمال</option>
+                <option value="90" data-ar="➡️ شرق" data-en="➡️ East">➡️ شرق</option>
+                <option value="180" data-ar="⬇️ جنوب" data-en="⬇️ South">⬇️ جنوب</option>
+                <option value="270" data-ar="⬅️ غرب" data-en="⬅️ West">⬅️ غرب</option>
+                <option value="315" data-ar="↖️ شمال غرب" data-en="↖️ North-West">↖️ شمال غرب</option>
+                <option value="45" data-ar="↗️ شمال شرق" data-en="↗️ North-East">↗️ شمال شرق</option>
+            </select>
+
+            <label style="color:#9ca3af;font-size:12px;" data-ar="نصف القطر (متر):" data-en="Radius (meters):">نصف القطر
+                (متر):</label>
+            <input type="number" id="sector-radius" value="200" min="10" step="10" class="form-input text-sm py-1 mb-3"
+                style="margin-top:4px;width:100%;" />
+
+            <label style="color:#9ca3af;font-size:12px;" data-ar="اسم المنطقة (اختياري):"
+                data-en="Area Name (Optional):">اسم المنطقة (اختياري):</label>
+            <input type="text" id="sector-name" class="form-input text-sm py-1 mb-4" style="margin-top:4px;width:100%;"
+                data-ar-placeholder="مثال: ربع بيفوت الشمالي" data-en-placeholder="e.g. North Quarter Pivot"
+                placeholder="مثال: ربع بيفوت الشمالي" />
+
+            <p style="font-size:11px;color:#6b7280;margin-bottom:12px;"
+                data-ar="💡 سيُرسم القوس على مركز الخريطة الحالي. يمكنك تحريكه بأدوات التعديل."
+                data-en="💡 The arc will be drawn at the center of the map. You can move it using edit tools.">💡 سيُرسم
+                القوس على مركز الخريطة الحالي. يمكنك
+                تحريكه بأدوات التعديل.</p>
+
+            <div style="display:flex;gap:8px;">
+                <button onclick="addSectorToMap()" class="btn-primary" style="flex:1;padding:10px;font-size:13px;"
+                    data-ar="✅ إضافة القوس" data-en="✅ Add Arc">✅
+                    إضافة القوس</button>
+                <button onclick="closeSectorModal()" class="btn-secondary" style="flex:1;padding:10px;font-size:13px;"
+                    data-ar="❌ إلغاء" data-en="❌ Cancel">❌
+                    إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let map, drawnItems;
+        let features = []; // Store drawn GeoJSON features with their type
+
+        // --- Bilingual System (Consistent with Dashboard) ---
+        window.CURRENT_LANG = localStorage.getItem('tayseer_lang') || 'ar';
+        window.t = function (ar, en) { return window.CURRENT_LANG === 'en' ? en : ar; };
+
+        function updateUILanguage() {
+            document.documentElement.lang = window.CURRENT_LANG;
+            document.documentElement.dir = window.CURRENT_LANG === 'ar' ? 'rtl' : 'ltr';
+
+            // Translate tags
+            document.querySelectorAll('[data-ar]').forEach(el => {
+                const arText = el.getAttribute('data-ar');
+                const enText = el.getAttribute('data-en') || arText;
+                if (el.tagName === 'INPUT' && el.type === 'button') {
+                    el.value = window.t(arText, enText);
+                } else if (el.childNodes.length === 1 && el.childNodes[0].nodeType === 3) {
+                    el.innerText = window.t(arText, enText);
+                } else {
+                    el.innerHTML = window.t(arText, enText);
+                }
+            });
+
+            // Translate placeholders
+            document.querySelectorAll('[data-ar-placeholder]').forEach(el => {
+                const arText = el.getAttribute('data-ar-placeholder');
+                const enText = el.getAttribute('data-en-placeholder') || arText;
+                el.setAttribute('placeholder', window.t(arText, enText));
+            });
+        }
+
+        // Apply instantly on load
+        document.addEventListener("DOMContentLoaded", function () {
+            updateUILanguage();
+        });
+
+        /* ── Area Calculation ── */
+        function calculatePolygonAreaM2(coords) {
+            const toRad = d => d * Math.PI / 180;
+            const R = 6371000;
+            let area = 0;
+            const n = coords.length;
+            if (n < 3) return 0;
+            for (let i = 0; i < n; i++) {
+                const j = (i + 1) % n;
+                const xi = toRad(coords[i][0]), yi = toRad(coords[i][1]);
+                const xj = toRad(coords[j][0]), yj = toRad(coords[j][1]);
+                area += (xj - xi) * (2 + Math.sin(yi) + Math.sin(yj));
+            }
+            return Math.abs(area * R * R / 2);
+        }
+        function calculateCircleAreaM2(r) { return Math.PI * r * r; }
+        function formatAreaArabic(m2) {
+            const feddan = m2 / 4200;
+            if (feddan >= 1.0) return `${feddan.toFixed(2)} ${window.t('فدان', 'Feddan')}`;
+            const qirat = m2 / 175;
+            if (qirat >= 1.0) return `${qirat.toFixed(1)} ${window.t('قيراط', 'Qirat')}`;
+            return `${Math.round(m2)} ${window.t('م²', 'm²')}`;
+        }
+        function getFeatureAreaM2(f) {
+            const geom = f.geometry;
+            if (!geom) return 0;
+            // القطاعات الدائرية: الصيغة التحليلية الدقيقة π×r²×angle/360
+            if (f.properties && f.properties.sectorAngle && f.properties.sectorRadius) {
+                return (f.properties.sectorAngle / 360) * Math.PI * f.properties.sectorRadius ** 2;
+            }
+            if (geom.type === 'Polygon') return calculatePolygonAreaM2(geom.coordinates[0]);
+            if (geom.type === 'MultiPolygon') return geom.coordinates.reduce((s, p) => s + calculatePolygonAreaM2(p[0]), 0);
+            if (f.properties && f.properties.radius) return calculateCircleAreaM2(f.properties.radius);
+            return 0;
+        }
+
+        /* ── Tab Switching ── */
+        function switchTab(tab) {
+            clearAlert();
+            const loginForm = document.getElementById('login-form');
+            const regWizard = document.getElementById('register-wizard');
+            const tabLogin = document.getElementById('tab-login');
+            const tabReg = document.getElementById('tab-register');
+
+            if (tab === 'login') {
+                loginForm.classList.remove('hidden-section');
+                regWizard.classList.add('hidden-section');
+                tabLogin.className = 'tab-btn tab-active flex-1';
+                tabReg.className = 'tab-btn tab-inactive flex-1';
+            } else {
+                loginForm.classList.add('hidden-section');
+                regWizard.classList.remove('hidden-section');
+                tabLogin.className = 'tab-btn tab-inactive flex-1';
+                tabReg.className = 'tab-btn tab-active flex-1';
+
+                // Reset wizard to step 1
+                document.getElementById('reg-step-1').classList.remove('hidden-section');
+                document.getElementById('reg-step-2').classList.add('hidden-section');
+                document.getElementById('map-container').style.display = 'none';
+                if (map) { map.remove(); map = null; features = []; updateFeatureList(); }
+            }
+        }
+
+        function showAlert(msg, type = 'error') {
+            const el = document.getElementById('global-alert');
+            el.textContent = msg;
+            el.className = `alert alert-${type} show`;
+        }
+        function clearAlert() { document.getElementById('global-alert').className = 'alert'; }
+
+        /* ── Register Wizard Navigation ── */
+        function nextStep(e) {
+            e.preventDefault();
+            document.getElementById('reg-step-1').classList.add('hidden-section');
+            document.getElementById('reg-step-2').classList.remove('hidden-section');
+            document.getElementById('map-container').style.display = 'block';
+
+            // Init Leaflet map once container is visible
+            setTimeout(initMap, 200);
+        }
+
+        function prevStep() {
+            document.getElementById('reg-step-2').classList.add('hidden-section');
+            document.getElementById('map-container').style.display = 'none';
+            document.getElementById('reg-step-1').classList.remove('hidden-section');
+        }
+
+        /* ── Map Initialisation & Drawing (Geoman) ── */
+        function initMap() {
+            if (map) return; // already init
+
+            // Default to Egypt center
+            map = L.map('drawing-map').setView([26.8206, 30.8025], 6);
+
+            L.tileLayer('https://mt1.google.com/vt/lyrs=y&hl=ar&x={x}&y={y}&z={z}', {
+                maxZoom: 21,
+                attribution: 'Google Maps'
+            }).addTo(map);
+
+            // Initialise Geoman controls
+            map.pm.addControls({
+                position: 'topleft',
+                drawMarker: false,
+                drawCircleMarker: false,
+                drawPolyline: false,
+                drawRectangle: true,
+                drawPolygon: true,
+                drawCircle: true,
+                editMode: true,
+                dragMode: false,
+                cutPolygon: false,
+                removalMode: true,
+            });
+
+            // Change language to Arabic
+            map.pm.setLang('ar');
+
+            // On shape created
+            map.on('pm:create', (e) => {
+                const layer = e.layer;
+                const typeStr = document.getElementById('draw-type').value;
+                const typeLabel = document.getElementById('draw-type').options[document.getElementById('draw-type').selectedIndex].text;
+                const nameInput = document.getElementById('draw-name').value.trim();
+                const finalLabel = nameInput ? `${typeLabel} - ${nameInput}` : typeLabel;
+
+                // Give it a unique ID
+                const id = Date.now().toString();
+                layer.featureId = id;
+
+                // Colour coding
+                let color = '#22c55e'; // crop
+                if (typeStr === 'house') color = '#facc15';
+                if (typeStr === 'pivot') color = '#3b82f6';
+                if (typeStr === 'water') color = '#06b6d4';
+                if (typeStr === 'road') color = '#9ca3af';
+
+                layer.setStyle({ color: color, fillColor: color, fillOpacity: 0.4 });
+
+                const geojson = layer.toGeoJSON();
+                // If it's a circle (Leaflet doesn't natively do GeoJSON circles), approximate it via point + radius
+                if (e.shape === 'Circle') {
+                    geojson.properties.radius = layer.getRadius();
+                }
+
+                geojson.properties.id = id;
+                geojson.properties.zoneType = typeStr;
+                geojson.properties.zoneLabel = finalLabel;
+                geojson.properties.color = color;
+
+                // Reset the name input so the next shape doesn't carry the same specific name
+                document.getElementById('draw-name').value = '';
+
+                features.push(geojson);
+                updateFeatureList();
+
+                // Listen for edit/drag on this layer to update GeoJSON
+                layer.on('pm:edit', updateFeatureGeometry);
+            });
+
+            // On shape deleted
+            map.on('pm:remove', (e) => {
+                features = features.filter(f => f.properties.id !== e.layer.featureId);
+                updateFeatureList();
+            });
+        }
+
+        function updateFeatureGeometry(e) {
+            const layer = e.target;
+            const id = layer.featureId;
+            const index = features.findIndex(f => f.properties.id === id);
+            if (index > -1) {
+                const updatedGeoJSON = layer.toGeoJSON();
+                updatedGeoJSON.properties = features[index].properties; // preserve our custom props
+                if (layer.getRadius) updatedGeoJSON.properties.radius = layer.getRadius();
+                features[index] = updatedGeoJSON;
+            }
+        }
+
+        function updateFeatureList() {
+            const list = document.getElementById('feature-list');
+            if (features.length === 0) {
+                list.innerHTML = `<div class="text-xs text-gray-500 italic">${window.t('لم ترسم شيئاً بعد.', 'You haven\'t drawn anything yet.')}</div>`;
+                document.getElementById('total-area-display').style.display = 'none';
+                return;
+            }
+            let totalM2 = 0;
+            list.innerHTML = features.map(f => {
+                const m2 = getFeatureAreaM2(f);
+                totalM2 += m2;
+                const areaStr = m2 > 0 ? `<span style="color:#4ade80;font-size:10px;margin-right:4px;">(${formatAreaArabic(m2)})</span>` : '';
+                return `<div class="feature-item">
+                    <span style="color:${f.properties.color}">■</span>
+                    <span class="flex-1 ${window.CURRENT_LANG === 'en' ? 'ml-2' : 'mr-2'}">${f.properties.zoneLabel}</span>
+                    ${areaStr}
+                    <button type="button" class="delete-btn" onclick="deleteFeatureLayer('${f.properties.id}')">✕</button>
+                </div>`;
+            }).join('');
+            // Show total area
+            const totalEl = document.getElementById('total-area-display');
+            if (totalEl && totalM2 > 0) {
+                totalEl.textContent = `📐 ${window.t('إجمالي المساحة: ', 'Total Area: ')} ${formatAreaArabic(totalM2)}`;
+                totalEl.style.display = 'block';
+            }
+        }
+
+        function deleteFeatureLayer(id) {
+            // Find layer on map and remove it
+            map.eachLayer(layer => {
+                if (layer.featureId === id) {
+                    map.removeLayer(layer);
+                    features = features.filter(f => f.properties.id !== id);
+                    updateFeatureList();
+                }
+            });
+        }
+
+        /* ── GPS — IP-based (works on HTTP/LAN) + browser fallback ── */
+        let _gpsLat = null, _gpsLon = null, _gpsMarker = null;
+
+        function detectGPS() {
+            const btn = document.getElementById('gps-btn');
+            btn.innerHTML = window.t('⏳ جاري تحديد موقعك…', '⏳ Locating...');
+            btn.disabled = true;
+
+            // Try browser GPS first (works on HTTPS or localhost)
+            if (navigator.geolocation && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => _applyLocation(pos.coords.latitude, pos.coords.longitude, Math.round(pos.coords.accuracy) + window.t('م GPS', 'm GPS'), btn),
+                    () => _ipLocation(btn),
+                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+                );
+            } else {
+                // HTTP/LAN: use IP geolocation (free, no key needed)
+                _ipLocation(btn);
+            }
+        }
+
+        async function _ipLocation(btn) {
+            try {
+                const res = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(5000) });
+                const d = await res.json();
+                if (d.latitude && d.longitude) {
+                    _applyLocation(d.latitude, d.longitude, window.t('تقريباً (من IP)', 'Approx. (via IP)'), btn);
+                    return;
+                }
+            } catch { }
+            showAlert(window.t('⚠️ تعذّر تحديد الموقع. استخدم البحث بدلاً.', '⚠️ Couldn\'t locate GPS. Use the search bar.'));
+            btn.innerHTML = window.t('📵 موقعي بدقة عالية', '📵 High Accuracy GPS');
+            btn.disabled = false;
+        }
+
+        function _applyLocation(lat, lon, label, btn) {
+            _gpsLat = parseFloat(lat.toFixed ? lat.toFixed(6) : lat);
+            _gpsLon = parseFloat(lon.toFixed ? lon.toFixed(6) : lon);
+
+            if (map) {
+                map.flyTo([_gpsLat, _gpsLon], 16, { animate: true, duration: 1.2 });
+                if (_gpsMarker) map.removeLayer(_gpsMarker);
+                const pinIcon = L.divIcon({
+                    html: '<div style="font-size:32px;filter:drop-shadow(0 3px 6px #000);">📍</div>',
+                    iconSize: [32, 40], iconAnchor: [16, 40], className: ''
+                });
+                _gpsMarker = L.marker([_gpsLat, _gpsLon], { icon: pinIcon }).addTo(map);
+                _gpsMarker.bindPopup(`<b>📍 ${window.t('موقعك', 'Your Location')} (${label})</b><br>${window.t('خط عرض:', 'Lat:')} ${_gpsLat}<br>${window.t('خط طول:', 'Lon:')} ${_gpsLon}
+                    <br><a href="https://maps.google.com/?q=${_gpsLat},${_gpsLon}" target="_blank" style="color:#4ade80">🌍 ${window.t('افتح في جوجل مابز', 'Open in Google Maps')}</a>`).openPopup();
+            }
+            if (btn) {
+                btn.innerHTML = `✅ ${window.t('تم', 'Done')} (${label})`;
+                btn.disabled = false;
+            }
+            showAlert(`✅ ${window.t(`تم تحديد موقعك (${label}). ارسم حدود مزرعتك ثم اضغط إنشاء الحساب.`, `Location Set (${label}). Draw your farms boundary then hit create account.`)}`, 'success');
+        }
+
+        /* ── Map Search — Egypt-biased, with global fallback ── */
+        async function searchMap() {
+            const q = document.getElementById('map-search').value.trim();
+            if (!q) return;
+
+            const btn = document.getElementById('search-btn');
+            const resultsEl = document.getElementById('search-results');
+            btn.innerHTML = '⏳';
+            btn.disabled = true;
+            resultsEl.style.display = 'none';
+            resultsEl.innerHTML = '';
+
+            try {
+                // First try Egypt-only
+                let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q + ' مصر')}&countrycodes=eg&limit=5&accept-language=${window.CURRENT_LANG}`;
+                let res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+                let data = await res.json();
+
+                // Fallback: try without country restriction if no Egypt results
+                if (!data || data.length === 0) {
+                    url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&accept-language=${window.CURRENT_LANG}`;
+                    res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+                    data = await res.json();
+                }
+
+                if (!data || data.length === 0) {
+                    showAlert(window.t('لم يتم العثور على المكان.', 'Location not found.'));
+                } else if (data.length === 1) {
+                    _flyToResult(data[0]);
+                } else {
+                    window._searchResults = data;
+                    resultsEl.style.display = 'block';
+                    resultsEl.innerHTML = data.map((r, i) => `
+                        <div style="display:flex;align-items:center;gap:8px;padding:10px 16px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;color:#e2e8f0;"
+                             onmouseover="this.style.background='rgba(34,197,94,0.12)'"
+                             onmouseout="this.style.background=''"
+                             onclick="_selectResult(${i})">
+                            <span style="color:#4ade80;flex-shrink:0">📍</span>
+                            <span>${r.display_name}</span>
+                        </div>
+                    `).join('');
+                }
+            } catch (err) {
+                showAlert(window.t('خطأ في خدمة البحث. تأكد من الإنترنت.', 'Search error. Check your network.'));
+            }
+
+            btn.innerHTML = '🔍';
+            btn.disabled = false;
+        }
+
+        function _selectResult(idx) {
+            const r = window._searchResults[idx];
+            document.getElementById('search-results').style.display = 'none';
+            _flyToResult(r);
+        }
+
+        function _flyToResult(r) {
+            const lat = parseFloat(r.lat);
+            const lon = parseFloat(r.lon);
+            if (map) {
+                map.flyTo([lat, lon], 16, { animate: true, duration: 1 });
+                const icon = L.divIcon({
+                    html: '<div style="font-size:30px;filter:drop-shadow(0 2px 4px #000);">📍</div>',
+                    iconSize: [30, 38], iconAnchor: [15, 38], className: ''
+                });
+                L.marker([lat, lon], { icon })
+                    .addTo(map)
+                    .bindPopup(`<b>${r.display_name.split(',')[0]}</b><br>
+                    <a href="https://maps.google.com/?q=${lat},${lon}" target="_blank" style="color:#4ade80">🌍 ${window.t('فتح في جوجل مابز', 'Open in Google Maps')}</a>`)
+                    .openPopup();
+            }
+            _gpsLat = lat;
+            _gpsLon = lon;
+        }
+
+        /* ── API Submission ── */
+
+        async function submitLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('login-btn');
+            btn.disabled = true;
+            btn.innerHTML = window.t('جاري تسجيل الدخول <span class="spinner"></span>', 'Logging in <span class="spinner"></span>');
+            clearAlert();
+            try {
+                const res = await fetch('/auth/login', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: document.getElementById('login-email').value.trim(),
+                        password: document.getElementById('login-password').value
+                    })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    window.location.href = data.redirect;
+                } else {
+                    showAlert(data.message);
+                }
+            } catch { showAlert(window.t('خطأ في الشبكة.', 'Network Error.')); }
+            finally { btn.disabled = false; btn.textContent = window.t('دخول إلى المزرعة', 'Enter Farm'); }
+        }
+
+        /* ── Reverse Geocoding (عنوان الأرض الكامل) ── */
+        async function reverseGeocode(lat, lon) {
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=${window.CURRENT_LANG}`,
+                    { signal: AbortSignal.timeout(5000) });
+                const d = await res.json();
+                if (d && d.address) {
+                    const a = d.address;
+                    const parts = [];
+                    if (a.country) parts.push(a.country);
+                    if (a.state) parts.push(a.state);
+                    if (a.county || a.district) parts.push(a.county || a.district);
+                    if (a.suburb || a.village || a.town || a.city_district) parts.push(a.suburb || a.village || a.town || a.city_district);
+                    if (parts.length > 0) return parts.join('، ');
+                }
+            } catch (e) { console.error('Reverse geocode error:', e); }
+            return null;
+        }
+
+        async function submitRegistration() {
+            if (features.length === 0) {
+                if (!confirm(window.t('لم ترسم أي منطقة على الخريطة! هل تريد المتابعة بدون رسم المزرعة؟', 'You haven\'t drawn any areas! Do you want to continue without drawing a farm?'))) return;
+            }
+
+            const btn = document.getElementById('final-reg-btn');
+            btn.disabled = true;
+            btn.innerHTML = window.t('جاري التجهيز <span class="spinner"></span>', 'Deploying <span class="spinner"></span>');
+            clearAlert();
+
+            // Use GPS/search coords if available, else fall back to map center
+            const center = map.getCenter();
+            const finalLat = (_gpsLat !== null) ? _gpsLat : center.lat;
+            const finalLon = (_gpsLon !== null) ? _gpsLon : center.lng;
+
+            // Estimate total area if there are crop/pivot polygons (very rough estimation here)
+            // GeoJSON coordinates can be fed to server or Turf.js. We pass the raw GeoJSON instead.
+            // العنوان الكامل من reverse geocoding
+            let farmLocation = window.t('محددة على الخريطة', 'Determined from Map');
+            try {
+                const geoAddr = await reverseGeocode(finalLat, finalLon);
+                if (geoAddr) farmLocation = geoAddr;
+            } catch (e) { }
+
+            const geojsonFeatureCollection = {
+                type: "FeatureCollection",
+                features: features
+            };
+
+            const payload = {
+                name: document.getElementById('reg-name').value.trim(),
+                phone: document.getElementById('reg-phone').value.trim(),
+                email: document.getElementById('reg-email').value.trim(),
+                password: document.getElementById('reg-password').value,
+                crop_type: "متعدد", // generic, drawing handles specifics
+                farm_location: farmLocation,
+                area_feddan: document.getElementById('reg-area') ? parseFloat(document.getElementById('reg-area').value) : 1.0, // fallback
+                lat: finalLat,
+                lon: finalLon,
+                farm_geojson: JSON.stringify(geojsonFeatureCollection)
+            };
+
+            try {
+                const res = await fetch('/auth/register', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    window.location.href = data.redirect;
+                } else {
+                    showAlert(data.message);
+                    btn.disabled = false; btn.textContent = window.t('إنشاء الحساب وبدء الزراعة 🚀', 'Create Account & Start Farming 🚀');
+                }
+            } catch {
+                showAlert(window.t('خطأ في الشبكة.', 'Network Error.'));
+                btn.disabled = false; btn.textContent = window.t('إنشاء الحساب وبدء الزراعة 🚀', 'Create Account & Start Farming 🚀');
+            }
+        }
+
+        /* ── Sector / Arc Drawing ── */
+        function openSectorModal() {
+            if (!map) { showAlert('افتح الخريطة أولاً!'); return; }
+            const modal = document.getElementById('sector-modal');
+            modal.style.display = 'flex';
+            document.getElementById('sector-type').onchange = function () {
+                document.getElementById('sector-custom-row').style.display = this.value === 'custom' ? 'block' : 'none';
+            };
+        }
+        function closeSectorModal() {
+            document.getElementById('sector-modal').style.display = 'none';
+        }
+
+        /**
+         * توليد نقاط بوليجون يمثل قطاع دائري
+         * centerLat, centerLon: مركز الدائرة
+         * radiusM: نصف القطر بالمتر
+         * startDeg: زاوية البداية (0 = شمال, 90 = شرق ...)
+         * angleDeg: زاوية القطاع (90 = ربع, 180 = نصف, 270 = ثلاثة أرباع)
+         */
+        function generateSectorPoints(centerLat, centerLon, radiusM, startDeg, angleDeg) {
+            const toRad = d => d * Math.PI / 180;
+            const R = 6371000;
+            const steps = Math.max(32, Math.round(angleDeg / 3)); // دقة عالية
+            const points = [];
+
+            // النقطة المركزية أولاً
+            points.push([centerLon, centerLat]);
+
+            for (let i = 0; i <= steps; i++) {
+                const bearing = toRad(startDeg + (angleDeg * i / steps));
+                // حساب الإحداثيات باستخدام Haversine inverse
+                const lat = centerLat + (radiusM / R) * (180 / Math.PI) * Math.cos(bearing);
+                const lon = centerLon + (radiusM / R) * (180 / Math.PI) * Math.sin(bearing) / Math.cos(toRad(centerLat));
+                points.push([lon, lat]);
+            }
+
+            // إغلاق البوليجون
+            points.push([centerLon, centerLat]);
+            return points;
+        }
+
+        function addSectorToMap() {
+            const typeVal = document.getElementById('sector-type').value;
+            const startDeg = parseFloat(document.getElementById('sector-dir').value);
+            const radiusM = parseFloat(document.getElementById('sector-radius').value) || 200;
+            const nameInput = document.getElementById('sector-name').value.trim();
+
+            let angleDeg;
+            if (typeVal === 'custom') {
+                angleDeg = parseFloat(document.getElementById('sector-custom-angle').value) || 120;
+            } else {
+                angleDeg = parseFloat(typeVal);
+            }
+
+            const typeLabels = { '90': window.t('ربع دائرة', 'Quarter'), '180': window.t('نصف دائرة', 'Half'), '270': window.t('ثلاثة أرباع دائرة', 'Three Quarters') };
+            const label = nameInput ? nameInput : (typeLabels[typeVal] || window.t(`قوس ${angleDeg}°`, `Arc ${angleDeg}°`));
+
+            // إغلاق ال modal وتفعيل وضع النقر على الخريطة
+            closeSectorModal();
+            _sectorClickMode = true;
+            map.getContainer().style.cursor = 'crosshair';
+            showAlert(window.t('📏 انقر على الخريطة لتحديد مركز القوس', '📏 Click on the map to determine ARC Center'), 'success');
+
+            const onMapClick = function (e) {
+                if (!_sectorClickMode) return;
+                _sectorClickMode = false;
+                map.getContainer().style.cursor = '';
+                map.off('click', onMapClick);
+                clearAlert();
+
+                const coords = generateSectorPoints(e.latlng.lat, e.latlng.lng, radiusM, startDeg, angleDeg);
+                const color = '#3b82f6';
+                const id = Date.now().toString();
+
+                const latlngs = coords.map(c => [c[1], c[0]]);
+                const layer = L.polygon(latlngs, { color, fillColor: color, weight: 2, fillOpacity: 0.38 }).addTo(map);
+                layer.featureId = id;
+                layer.on('pm:edit', updateFeatureGeometry);
+
+                const geojson = {
+                    type: 'Feature',
+                    geometry: { type: 'Polygon', coordinates: [coords] },
+                    properties: { id, zoneType: 'pivot', zoneLabel: label, color, sectorAngle: angleDeg, sectorRadius: radiusM }
+                };
+                features.push(geojson);
+                updateFeatureList();
+                map.fitBounds(layer.getBounds(), { padding: [20, 20] });
+                document.getElementById('sector-name').value = '';
+            };
+            map.on('click', onMapClick);
+        }
+
+    </script>
+
+</body>
+
+</html>

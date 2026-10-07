@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📊 التقارير المخصصة | Tayseer Agri-SaT</title>
+  <meta name="description" content="إنشاء وتحميل تقارير مزرعية احترافية بصيغ Word وExcel وPDF">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── Reset ──────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:    #10b981;
+      --green-dk: #059669;
+      --green-lt: rgba(16,185,129,.12);
+      --blue:     #3b82f6;
+      --amber:    #f59e0b;
+      --red:      #ef4444;
+      --bg:       #0c131f;
+      --surface:  #13202f;
+      --card:     #1a2d3f;
+      --card2:    #1e3347;
+      --border:   rgba(255,255,255,0.08);
+      --txt:      #e2e8f0;
+      --txt-m:    #94a3b8;
+      --radius:   12px;
+      --font:     'Cairo', sans-serif;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--txt);
+      min-height: 100vh;
+      direction: rtl;
+      display: flex;
+    }
+
+    /* ── Sidebar (shared) ───────────────────── */
+    .page-sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Main content ───────────────────────── */
+    .page-main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      max-width: 1200px;
+    }
+
+    /* ── Page header ────────────────────────── */
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .page-title {
+      font-size: 24px;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--green), #34d399);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .page-subtitle { font-size: 13px; color: var(--txt-m); margin-top: 3px; }
+
+    /* ── Two-column grid ────────────────────── */
+    .layout-grid {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (max-width: 900px) {
+      .layout-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Card ───────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--txt);
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── Section label ──────────────────────── */
+    .sec-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--txt-m);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 12px;
+    }
+
+    /* ── Type selector cards ────────────────── */
+    .type-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 600px) {
+      .type-grid { grid-template-columns: 1fr; }
+    }
+
+    .type-card {
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 10px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .18s;
+      background: var(--card2);
+      user-select: none;
+    }
+
+    .type-card:hover {
+      border-color: var(--green);
+      background: var(--green-lt);
+    }
+
+    .type-card.active {
+      border-color: var(--green);
+      background: var(--green-lt);
+      box-shadow: 0 0 0 2px rgba(16,185,129,.2);
+    }
+
+    .type-card .tc-icon { font-size: 28px; display: block; margin-bottom: 6px; }
+    .type-card .tc-name { font-size: 13px; font-weight: 700; }
+    .type-card .tc-desc { font-size: 10px; color: var(--txt-m); margin-top: 3px; }
+
+    /* ── Format cards ───────────────────────── */
+    .format-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .format-card {
+      border: 2px solid var(--border);
+      border-radius: 9px;
+      padding: 12px 8px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .18s;
+      background: var(--card2);
+      user-select: none;
+    }
+
+    .format-card:hover  { border-color: var(--blue); background: rgba(59,130,246,.1); }
+    .format-card.active { border-color: var(--blue); background: rgba(59,130,246,.15);
+                          box-shadow: 0 0 0 2px rgba(59,130,246,.2); }
+    .format-card.disabled { opacity: .35; cursor: not-allowed; pointer-events: none; }
+
+    .format-card .fc-icon { font-size: 24px; display: block; margin-bottom: 5px; }
+    .format-card .fc-name { font-size: 12px; font-weight: 700; }
+    .format-card .fc-ext  { font-size: 10px; color: var(--txt-m); }
+
+    /* ── Period buttons ─────────────────────── */
+    .period-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+
+    .period-btn {
+      padding: 7px 16px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--card2);
+      color: var(--txt);
+      font-family: var(--font);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .period-btn:hover  { border-color: var(--green); color: var(--green); }
+    .period-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
+
+    /* ── Custom date range ──────────────────── */
+    .date-range {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .fg { display: flex; flex-direction: column; gap: 5px; }
+
+    .fg label { font-size: 11px; color: var(--txt-m); font-weight: 600; }
+
+    .fg input, .fg select {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 8px 11px;
+      color: var(--txt);
+      font-family: var(--font);
+      font-size: 12px;
+      transition: border-color .15s;
+    }
+
+    .fg input:focus, .fg select:focus {
+      outline: none;
+      border-color: var(--green);
+    }
+
+    .fg input[type="date"]::-webkit-calendar-picker-indicator {
+      filter: invert(1) opacity(.5);
+      cursor: pointer;
+    }
+
+    /* ── Email delivery ─────────────────────── */
+    .email-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+      cursor: pointer;
+    }
+
+    .email-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--green); cursor: pointer; }
+    .email-row span { font-size: 13px; font-weight: 600; }
+
+    #email-input-wrap {
+      display: none;
+      margin-top: 8px;
+    }
+
+    /* ── Generate button ────────────────────── */
+    .btn-generate {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--green-dk), var(--green));
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-family: var(--font);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 20px;
+      box-shadow: 0 4px 20px rgba(16,185,129,.3);
+    }
+
+    .btn-generate:hover:not(:disabled) {
+      background: linear-gradient(135deg, var(--green), #34d399);
+      box-shadow: 0 6px 28px rgba(16,185,129,.5);
+      transform: translateY(-1px);
+    }
+
+    .btn-generate:disabled {
+      background: #374151;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    /* ── Spinner ────────────────────────────── */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Preview card ───────────────────────── */
+    .preview-box {
+      background: var(--card2);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 24px 16px;
+      text-align: center;
+      margin-bottom: 16px;
+    }
+
+    .preview-box .pv-icon { font-size: 40px; display: block; margin-bottom: 10px; }
+
+    .preview-box .pv-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--green);
+      margin-bottom: 6px;
+    }
+
+    .preview-box .pv-meta { font-size: 12px; color: var(--txt-m); line-height: 1.8; }
+
+    /* ── Report history ─────────────────────── */
+    .history-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .history-item {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 10px 13px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transition: background .15s;
+    }
+
+    .history-item:hover { background: rgba(255,255,255,.04); }
+
+    .hi-icon { font-size: 20px; flex-shrink: 0; }
+
+    .hi-info { flex: 1; min-width: 0; }
+    .hi-title { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hi-meta  { font-size: 10px; color: var(--txt-m); margin-top: 1px; }
+
+    .hi-download {
+      background: var(--green-lt);
+      color: var(--green);
+      border: 1px solid rgba(16,185,129,.3);
+      border-radius: 6px;
+      padding: 4px 9px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: all .15s;
+    }
+
+    .hi-download:hover { background: var(--green); color: #fff; }
+
+    .empty-history {
+      text-align: center;
+      color: var(--txt-m);
+      font-size: 12px;
+      padding: 20px;
+    }
+
+    /* ── Toast ──────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--green);
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      font-family: var(--font);
+      box-shadow: 0 4px 20px rgba(0,0,0,.4);
+      z-index: 9999;
+      display: none;
+      direction: rtl;
+      animation: slideUp .3s ease;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    /* ── Divider ────────────────────────────── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 16px 0;
+    }
+
+    /* ── Scrollbar ──────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+  <!-- Shared Sidebar -->
+  <div class="page-sidebar">
+    {% include 'sidebar.html' ignore missing %}
+  </div>
+
+  <!-- Main Content -->
+  <main class="page-main">
+
+    <!-- Header -->
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">📊 التقارير المخصصة</h1>
+        <p class="page-subtitle">إنشاء تقارير احترافية بصيغ Word وExcel وPDF وإرسالها بالبريد</p>
+      </div>
+      <div style="font-size:12px;color:var(--txt-m);text-align:left">
+        مرحباً، <strong style="color:var(--txt)">{{ user.name }}</strong><br>
+        <span>{{ user.farm_name or 'مزرعتي' }}</span>
+      </div>
+    </div>
+
+    <!-- Layout Grid -->
+    <div class="layout-grid">
+
+      <!-- ══════════════ Left: Configuration ══════════════ -->
+      <div style="display:flex;flex-direction:column;gap:16px">
+
+        <!-- Report Type -->
+        <div class="card">
+          <div class="card-title">🗂️ نوع التقرير</div>
+          <div class="sec-label">اختر التقرير الذي تريد إنشاءه</div>
+          <div class="type-grid" id="type-grid">
+
+            <div class="type-card active" id="t-farm_summary"
+                 onclick="selectType('farm_summary')">
+              <span class="tc-icon">🌾</span>
+              <div class="tc-name">ملخص المزرعة</div>
+              <div class="tc-desc">نظرة شاملة + NDVI + طقس</div>
+            </div>
+
+            <div class="type-card" id="t-water_usage"
+                 onclick="selectType('water_usage')">
+              <span class="tc-icon">💧</span>
+              <div class="tc-name">استهلاك المياه</div>
+              <div class="tc-desc">ET، ساعات الري، WUE</div>
+            </div>
+
+            <div class="type-card" id="t-pivot_health"
+                 onclick="selectType('pivot_health')">
+              <span class="tc-icon">🔄</span>
+              <div class="tc-name">صحة البيفوت</div>
+              <div class="tc-desc">NDVI-CV، أعطال، صيانة</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Output Format -->
+        <div class="card">
+          <div class="card-title">📁 صيغة الملف</div>
+          <div class="sec-label">اختر التنسيق المطلوب</div>
+          <div class="format-grid" id="format-grid">
+
+            <div class="format-card active" id="f-word"
+                 onclick="selectFormat('word')">
+              <span class="fc-icon">📄</span>
+              <div class="fc-name">Word</div>
+              <div class="fc-ext">.docx</div>
+            </div>
+
+            <div class="format-card" id="f-excel"
+                 onclick="selectFormat('excel')">
+              <span class="fc-icon">📊</span>
+              <div class="fc-name">Excel</div>
+              <div class="fc-ext">.xlsx</div>
+            </div>
+
+            <div class="format-card" id="f-pdf"
+                 onclick="selectFormat('pdf')">
+              <span class="fc-icon">📑</span>
+              <div class="fc-name">PDF</div>
+              <div class="fc-ext">.pdf</div>
+            </div>
+
+          </div>
+          <div id="format-note" style="font-size:11px;color:var(--amber);display:none;margin-top:6px">
+            ⚠️ هذا النوع من التقارير متاح بصيغة Excel فقط
+          </div>
+        </div>
+
+        <!-- Date Range -->
+        <div class="card">
+          <div class="card-title">📅 الفترة الزمنية</div>
+          <div class="sec-label">اختر نطاق البيانات</div>
+
+          <div class="period-wrap" id="period-wrap">
+            <button class="period-btn active" id="p-7"   onclick="selectPeriod(7,this)">7 أيام</button>
+            <button class="period-btn"        id="p-30"  onclick="selectPeriod(30,this)">30 يوم</button>
+            <button class="period-btn"        id="p-90"  onclick="selectPeriod(90,this)">3 شهور</button>
+            <button class="period-btn"        id="p-180" onclick="selectPeriod(180,this)">6 شهور</button>
+            <button class="period-btn"        id="p-365" onclick="selectPeriod(365,this)">سنة كاملة</button>
+          </div>
+
+          <div style="font-size:11px;color:var(--txt-m);margin-bottom:8px">أو حدد فترة مخصصة:</div>
+          <div class="date-range">
+            <div class="fg">
+              <label>من تاريخ</label>
+              <input type="date" id="date-from" onchange="handleCustomDate()">
+            </div>
+            <div class="fg">
+              <label>إلى تاريخ</label>
+              <input type="date" id="date-to" onchange="handleCustomDate()">
+            </div>
+          </div>
+        </div>
+
+        <!-- Email Delivery + Generate -->
+        <div class="card">
+          <div class="card-title">📨 خيارات الإرسال والتحميل</div>
+
+          <label class="email-row" for="chk-email">
+            <input type="checkbox" id="chk-email" onchange="toggleEmail(this)">
+            <span>إرسال التقرير بالبريد الإلكتروني</span>
+          </label>
+
+          <div id="email-input-wrap">
+            <div class="fg" style="margin-top:6px">
+              <label>البريد الإلكتروني</label>
+              <input type="email" id="recipient-email"
+                     placeholder="example@email.com"
+                     value="{{ user.email or '' }}">
+            </div>
+          </div>
+
+          <hr class="divider">
+
+          <button class="btn-generate" id="btn-gen" onclick="generateReport()">
+            <div class="spinner" id="gen-spinner"></div>
+            <span id="btn-gen-text">🚀 إنشاء التقرير وتحميله</span>
+          </button>
+        </div>
+
+      </div><!-- /left -->
+
+      <!-- ══════════════ Right: Preview + History ══════════════ -->
+      <div style="display:flex;flex-direction:column;gap:16px">
+
+        <!-- Preview -->
+        <div class="card">
+          <div class="card-title">👁️ معاينة التقرير</div>
+          <div class="preview-box">
+            <span class="pv-icon" id="pv-icon">📄</span>
+            <div class="pv-name" id="pv-name">ملخص المزرعة</div>
+            <div class="pv-meta" id="pv-meta">
+              الصيغة: Word (.docx)<br>
+              الفترة: 7 أيام<br>
+              الأقسام: NDVI، مياه، طقس، توصيات
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Reports -->
+        <div class="card">
+          <div class="card-title" style="justify-content:space-between">
+            <span>📚 التقارير السابقة</span>
+            <button onclick="loadHistory()" style="
+              background:none;border:none;color:var(--green);cursor:pointer;
+              font-family:var(--font);font-size:11px">🔄 تحديث</button>
+          </div>
+          <div id="history-list" class="history-list">
+            <div class="empty-history">⏳ جاري التحميل…</div>
+          </div>
+        </div>
+
+      </div><!-- /right -->
+
+    </div><!-- /layout-grid -->
+
+  </main><!-- /page-main -->
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <!-- JS -->
+  <script src="{{ url_for('static', filename='js/reports.js') }}"></script>
+</body>
+</html>

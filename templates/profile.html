@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-ar="Tayseer-AgriSaT — بيانات العميل" data-en="Tayseer-AgriSaT — Profile Info">Tayseer-AgriSaT — بيانات
+        العميل</title>
+    <meta name="description" content="صفحة بيانات العميل — عرض وتعديل بيانات المزرعة والحساب الشخصي." />
+
+    <!-- External CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Leaflet-Geoman (drawing) -->
+    <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.14.2/dist/leaflet-geoman.css" />
+    <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.14.2/dist/leaflet-geoman.min.js"></script>
+
+    <!-- Omnivore for KML/KMZ loading -->
+    <script src="https://api.mapbox.com/mapbox.js/plugins/leaflet-omnivore/v0.3.1/leaflet-omnivore.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap"
+        rel="stylesheet" />
+
+    <style>
+        .profile-card {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            padding: 24px;
+            transition: all 0.3s;
+        }
+
+        .profile-card:hover {
+            border-color: rgba(82, 183, 136, 0.25);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            color: #9ca3af;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-value {
+            color: #e2e8f0;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .edit-input {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 8px 14px;
+            color: #e2e8f0;
+            font-size: 14px;
+            outline: none;
+            direction: rtl;
+            width: 220px;
+            transition: all 0.3s;
+        }
+
+        .edit-input:focus {
+            border-color: #52b788;
+            background: rgba(82, 183, 136, 0.08);
+            box-shadow: 0 0 0 3px rgba(82, 183, 136, 0.15);
+        }
+
+        .chat-log-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 14px;
+            padding: 14px 18px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+
+        .chat-log-item:hover {
+            background: rgba(82, 183, 136, 0.06);
+            border-color: rgba(82, 183, 136, 0.2);
+        }
+
+        #mini-map {
+            height: 280px;
+            border-radius: 14px;
+            z-index: 1;
+        }
+
+        .tab-profile {
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .tab-profile.active {
+            background: linear-gradient(135deg, #52b788, #2d6a4f);
+            color: white;
+        }
+
+        .tab-profile:hover:not(.active) {
+            color: rgba(255, 255, 255, 0.8);
+        }
+    </style>
+
+    <script>
+        window.USER_LAT = Number('{{ user.lat or 30.0 }}');
+        window.USER_LON = Number('{{ user.lon or 31.0 }}');
+        window.FARM_GEOJSON = `{{ user.farm_geojson | safe }}`;
+    </script>
+</head>
+
+<body class="flex">
+
+    <!-- ── SIDEBAR ── -->
+    {% include 'sidebar.html' ignore missing %}
+
+    <!-- ── MAIN CONTENT ── -->
+    <main class="flex-1 overflow-y-auto p-5 md:p-7 space-y-6 relative">
+
+        <!-- Mobile header -->
+        <div class="flex items-center justify-between md:hidden mb-2">
+            <div class="flex items-center gap-2">
+                <span class="text-3xl">🛰️</span>
+                <h1 class="text-xl font-extrabold text-white" data-ar="بيانات العميل" data-en="Profile Info">بيانات
+                    العميل</h1>
+            </div>
+            <a href="/dashboard" class="btn btn-green text-xs" data-ar="🏡 لوحة التحكم" data-en="🏡 Dashboard">🏡 لوحة
+                التحكم</a>
+        </div>
+
+        <!-- Header -->
+        <div class="flex items-center gap-5 mb-2">
+            <div
+                class="w-20 h-20 rounded-full bg-gradient-to-br from-green-600 to-emerald-900 flex items-center justify-center text-4xl flex-shrink-0 border-2 border-green-500/30">
+                🧑‍🌾
+            </div>
+            <div>
+                <h2 class="text-2xl font-extrabold text-white mb-1">{{ user.name }}</h2>
+                <p class="text-sm text-green-400"><span data-ar="عميل منذ" data-en="Member since">عميل منذ</span> {{
+                    user.created_at[:10] if user.created_at else '—' }}</p>
+            </div>
+        </div>
+
+        <!-- Profile Tabs -->
+        <div class="flex gap-2 bg-white/5 rounded-xl p-1 mb-4 flex-wrap">
+            <button class="tab-profile active" onclick="showProfileTab('info')" data-ar="📋 البيانات الأساسية"
+                data-en="📋 Basic Info">📋 البيانات الأساسية</button>
+            <button class="tab-profile" onclick="showProfileTab('farm')" data-ar="🌾 بيانات المزرعة"
+                data-en="🌾 Farm Info">🌾 بيانات المزرعة</button>
+            <button class="tab-profile" onclick="showProfileTab('map')" data-ar="🗺️ تعديل الأرض"
+                data-en="🗺️ Edit Land">🗺️ تعديل الأرض</button>
+            <button class="tab-profile" onclick="showProfileTab('chat-history')" data-ar="💬 سجل المحادثات"
+                data-en="💬 Chat History">💬 سجل المحادثات</button>
+        </div>
+
+        <!-- Alert -->
+        <div class="alert" id="profile-alert"></div>
+
+        <!-- ── Tab: Personal Info ── -->
+        <section id="tab-info" class="profile-tab">
+            <div class="profile-card">
+                <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2" data-ar="📋 البيانات الشخصية"
+                    data-en="📋 Personal Info">📋 البيانات الشخصية</h3>
+                <div class="info-row">
+                    <span class="info-label" data-ar="👤 الاسم" data-en="👤 Name">👤 الاسم</span>
+                    <input class="edit-input" id="edit-name" value="{{ user.name }}" />
+                </div>
+                <div class="info-row">
+                    <span class="info-label" data-ar="📞 الهاتف" data-en="📞 Phone">📞 الهاتف</span>
+                    <input class="edit-input text-left" dir="ltr" id="edit-phone" value="{{ user.phone }}" />
+                </div>
+                <div class="info-row">
+                    <span class="info-label" data-ar="✉️ البريد الإلكتروني" data-en="✉️ Email">✉️ البريد
+                        الإلكتروني</span>
+                    <input class="edit-input text-left" dir="ltr" type="email" id="edit-email"
+                        value="{{ user.email }}" />
+                </div>
+                <div class="info-row">
+                    <span class="info-label" data-ar="🔑 حالة الحساب" data-en="🔑 Account Status">🔑 حالة الحساب</span>
+                    <span class="info-value">
+                        {% if user.is_verified %}
+                        <span class="badge badge-healthy" data-ar="✅ مفعّل" data-en="✅ Verified">✅ مفعّل</span>
+                        {% else %}
+                        <span class="badge badge-water_stress" data-ar="⏳ غير مفعّل" data-en="⏳ Unverified">⏳ غير
+                            مفعّل</span>
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label" data-ar="📅 تاريخ التسجيل" data-en="📅 Join Date">📅 تاريخ التسجيل</span>
+                    <span class="info-value">{{ user.created_at[:10] if user.created_at else '—' }}</span>
+                </div>
+                {% if user.telegram_chat_id %}
+                <div class="info-row">
+                    <span class="info-label" data-ar="📱 تليجرام" data-en="📱 Telegram">📱 تليجرام</span>
+                    <span class="info-value badge badge-healthy" data-ar="✅ مربوط" data-en="✅ Linked">✅ مربوط</span>
+                </div>
+                {% endif %}
+                <div id="personal-info-alert" class="alert mt-3"></div>
+                <button onclick="savePersonalInfo()" class="btn btn-green w-full mt-4" id="save-personal-btn"
+                    data-ar="💾 حفظ البيانات الشخصية" data-en="💾 Save Personal Info">💾 حفظ
+                    البيانات الشخصية</button>
+            </div>
+
+            <!-- Change Password Card -->
+            <div class="profile-card mt-5">
+                <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2" data-ar="🔐 تغيير كلمة المرور"
+                    data-en="🔐 Change Password">🔐 تغيير كلمة المرور</h3>
+                <div class="info-row">
+                    <span class="info-label" data-ar="كلمة المرور الحالية" data-en="Current Password">كلمة المرور
+                        الحالية</span>
+                    <input class="edit-input text-left" dir="ltr" type="password" id="edit-current-pwd"
+                        placeholder="••••••••" />
+                </div>
+                <div class="info-row">
+                    <span class="info-label" data-ar="كلمة المرور الجديدة" data-en="New Password">كلمة المرور
+                        الجديدة</span>
+                    <input class="edit-input text-left" dir="ltr" type="password" id="edit-new-pwd"
+                        data-ar-placeholder="معقدة (حروف وأرقام ورموز)"
+                        data-en-placeholder="Complex (letters, numbers, symbols)"
+                        placeholder="معقدة (حروف وأرقام ورموز)" />
+                </div>
+                <div class="info-row">
+                    <span class="info-label" data-ar="تأكيد كلمة المرور الجديدة" data-en="Confirm New Password">تأكيد
+                        كلمة المرور الجديدة</span>
+                    <input class="edit-input text-left" dir="ltr" type="password" id="edit-confirm-pwd"
+                        placeholder="••••••••" />
+                </div>
+                <p class="text-xs text-gray-500 mt-2"
+                    data-ar="يجب أن تحتوي على الأقل على 8 أحرف، حرف كبير، حرف صغير، رقم، ورمز خاص (@$!%*?&#^_-)"
+                    data-en="Must contain at least 8 characters, an uppercase letter, a lowercase letter, a number, and a special symbol (@$!%*?&#^_-)">
+                    يجب أن تحتوي على الأقل على 8 أحرف، حرف كبير، حرف صغير، رقم، ورمز
+                    خاص (@$!%*?&#^_-)</p>
+                <button onclick="changePassword()" class="btn btn-outline w-full mt-4" id="btn-change-pwd"
+                    data-ar="تسجيل كلمة المرور الجديدة" data-en="Set New Password">تسجيل كلمة
+                    المرور الجديدة</button>
+            </div>
+        </section>
+
+        <!-- ── Tab: Farm Data ── -->
+        <section id="tab-farm" class="profile-tab" style="display:none;">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                <div class="profile-card">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2" data-ar="🌾 تفاصيل المزرعة"
+                        data-en="🌾 Farm Details">🌾 تفاصيل المزرعة</h3>
+                    <div class="info-row">
+                        <span class="info-label" data-ar="📍 الموقع" data-en="📍 Location">📍 الموقع</span>
+                        <input class="edit-input" id="edit-farm-location" value="{{ user.farm_location or '' }}"
+                            data-ar-placeholder="مثال: الفيوم، مصر" data-en-placeholder="e.g. Cairo, Egypt"
+                            placeholder="مثال: الفيوم، مصر" />
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label" data-ar="🌿 نوع المحصول" data-en="🌿 Crop Type">🌿 نوع المحصول</span>
+                        <input class="edit-input" id="edit-crop-type" value="{{ user.crop_type or '' }}"
+                            data-ar-placeholder="مثال: قمح" data-en-placeholder="e.g. Wheat" placeholder="مثال: قمح" />
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label" data-ar="📐 المساحة (فدان)" data-en="📐 Area (Feddan)">📐 المساحة
+                            (فدان)</span>
+                        <input class="edit-input" id="edit-area" type="number" step="0.1"
+                            value="{{ user.area_feddan or 0 }}" />
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label" data-ar="📡 خط العرض (Lat)" data-en="📡 Latitude (Lat)">📡 خط العرض
+                            (Lat)</span>
+                        <input class="edit-input text-left" dir="ltr" id="edit-lat" type="number" step="0.0001"
+                            value="{{ '%.6f'|format(user.lat) if user.lat else '' }}"
+                            data-ar-placeholder="مثال: 29.3084" data-en-placeholder="e.g. 29.3084"
+                            placeholder="مثال: 29.3084" />
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label" data-ar="📡 خط الطول (Lon)" data-en="📡 Longitude (Lon)">📡 خط الطول
+                            (Lon)</span>
+                        <input class="edit-input text-left" dir="ltr" id="edit-lon" type="number" step="0.0001"
+                            value="{{ '%.6f'|format(user.lon) if user.lon else '' }}"
+                            data-ar-placeholder="مثال: 30.8428" data-en-placeholder="e.g. 30.8428"
+                            placeholder="مثال: 30.8428" />
+                    </div>
+                    <p class="text-xs text-green-400 mt-2 mb-3" data-ar="💡 اضغط على الخريطة لتحديد الموقع تلقائياً"
+                        data-en="💡 Tap on the map to automatically determine location">💡 اضغط على الخريطة لتحديد
+                        الموقع تلقائياً</p>
+                    <button onclick="saveProfile()" class="btn btn-green w-full mt-3" id="save-btn"
+                        data-ar="💾 حفظ التعديلات" data-en="💾 Save Changes">💾 حفظ
+                        التعديلات</button>
+                </div>
+
+                <div class="profile-card">
+                    <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2" data-ar="🗺️ موقع المزرعة"
+                        data-en="🗺️ Farm Location">🗺️ موقع المزرعة</h3>
+                    <div id="mini-map"></div>
+                </div>
+            </div>
+
+            <!-- ⚽ بيانات جهاز الري / البئر / التوربينة -->
+            <div class="profile-card mt-5">
+                <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2"
+                    data-ar="⚽️ بيانات جهاز الري والبئر" data-en="⚽️ Irrigation Device & Well Data">⚽️ بيانات جهاز الري
+                    والبئر</h3>
+                <p class="text-xs text-green-400 mb-4"
+                    data-ar="💡 هذه البيانات تُستخدم لحساب ساعات تشغيل جهاز الري وكمية المياه الداخلة للأرض واستهلاك الكهرباء"
+                    data-en="💡 These data are used to calculate irrigation device runtime, water entering the field, and power usage">
+                    💡 هذه البيانات تُستخدم لحساب ساعات تشغيل جهاز الري وكمية المياه الداخلة للأرض واستهلاك الكهرباء</p>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="info-row">
+                        <span class="info-label" data-ar="🚧 نوع جهاز الري" data-en="🚧 Irrigation Type">🚧 نوع جهاز
+                            الري</span>
+                        <select class="edit-input" id="edit-irrigation-type">
+                            <option value="pivot" {% if user.irrigation_type=='pivot' %}selected{% endif %}
+                                data-ar="🔄 بيفوت محوري" data-en="🔄 Pivot">🔄 بيفوت محوري</option>
+                            <option value="drip" {% if user.irrigation_type=='drip' %}selected{% endif %}
+                                data-ar="💧 ري بالتنقيط" data-en="💧 Drip">💧 ري بالتنقيط</option>
+                            <option value="sprinkler" {% if user.irrigation_type=='sprinkler' %}selected{% endif %}
+                                data-ar="🌧️ ري بالرش" data-en="🌧️ Sprinkler">🌧️ ري بالرش</option>
+                            <option value="flood" {% if user.irrigation_type=='flood' %}selected{% endif %}
+                                data-ar="🌊 ري بالغمر" data-en="🌊 Flood">🌊 ري بالغمر</option>
+                        </select>
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label" data-ar="⏱️ تصرف البئر/التوربينة (م³/ساعة)"
+                            data-en="⏱️ Well/Turbine Flow (m³/h)">⏱️ تصرف البئر (م³/ساعة)</span>
+                        <input class="edit-input text-left" dir="ltr" type="number" step="0.1" min="0"
+                            id="edit-well-flow-rate" value="{{ user.well_flow_rate or 0 }}"
+                            data-ar-placeholder="مثال: 60 م³/ساعة" data-en-placeholder="e.g. 60 m³/h"
+                            placeholder="مثال: 60 م³/ساعة" />
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label" data-ar="⬇️ عمق البئر (متر)" data-en="⬇️ Well Depth (m)">⬇️ عمق البئر
+                            (متر)</span>
+                        <input class="edit-input text-left" dir="ltr" type="number" step="1" min="0"
+                            id="edit-well-depth" value="{{ user.well_depth or 0 }}" data-ar-placeholder="مثال: 80 متر"
+                            data-en-placeholder="e.g. 80 m" placeholder="مثال: 80 متر" />
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label" data-ar="⚡ قدرة المضخة (كيلوواط)" data-en="⚡ Pump Power (kW)">⚡ قدرة
+                            المضخة (kW)</span>
+                        <input class="edit-input text-left" dir="ltr" type="number" step="0.5" min="0"
+                            id="edit-pump-power" value="{{ user.pump_power_kw or 0 }}" data-ar-placeholder="مثال: 22 kW"
+                            data-en-placeholder="e.g. 22 kW" placeholder="مثال: 22 kW" />
+                    </div>
+
+                    <div class="info-row">
+                        <span class="info-label" data-ar="⬆️ ارتفاع الضخ (متر)" data-en="⬆️ Pump Head (m)">⬆️ ارتفاع
+                            الضخ (متر)</span>
+                        <input class="edit-input text-left" dir="ltr" type="number" step="1" min="0" id="edit-pump-head"
+                            value="{{ user.pump_head_m or 0 }}" data-ar-placeholder="مثال: 100 متر"
+                            data-en-placeholder="e.g. 100 m" placeholder="مثال: 100 متر" />
+                    </div>
+                </div>
+
+                <div id="well-save-alert" class="alert mt-3"></div>
+                <button onclick="saveIrrigationDevice()" class="btn btn-green w-full mt-4" id="well-save-btn"
+                    data-ar="💾 حفظ بيانات جهاز الري" data-en="💾 Save Irrigation Device Data">💾 حفظ
+                    بيانات جهاز الري</button>
+            </div>
+        </section>
+
+        <!-- ─── Tab: Map Editor ─── -->
+        <section id="tab-map" class="profile-tab" style="display:none;">
+            <div class="profile-card">
+                <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2" data-ar="🗺️ تعديل حدود الأرض"
+                    data-en="🗺️ Land Boundary Editor">🗺️ تعديل حدود الأرض</h3>
+
+                <!-- Toolbar -->
+                <div class="flex gap-2 flex-wrap mb-3">
+                    <button onclick="detectGPSProfile()" class="btn btn-outline text-xs" id="prof-gps-btn"
+                        data-ar="📍 موقعي" data-en="📍 My Location">📍
+                        موقعي</button>
+                    <div class="flex gap-1 flex-1">
+                        <input type="text" id="prof-map-search" class="edit-input py-1 text-xs flex-1"
+                            data-ar-placeholder="ابحث عن موقع…" data-en-placeholder="Search for a location..."
+                            placeholder="ابحث عن موقع…"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();searchMapProfile();}" />
+                        <button type="button" onclick="searchMapProfile()"
+                            class="bg-green-600 text-white rounded-lg px-3 hover:bg-green-500 text-xs font-bold">🔍</button>
+                    </div>
+                </div>
+                <div id="prof-search-results" style="display:none;" class="mb-2 rounded-xl overflow-hidden"
+                    style="background:rgba(255,255,255,0.05);"></div>
+
+                <!-- Google Earth Import Tools -->
+                <div class="flex gap-2 flex-wrap mb-4 bg-white/5 p-3 rounded-xl border border-white/10">
+                    <div style="flex:1;min-width:200px;">
+                        <label class="text-xs text-green-400 mb-1 block" data-ar="استيراد رسمة Google Earth (KML/KMZ)"
+                            data-en="Import Google Earth shape (KML/KMZ)">استيراد رسمة Google Earth (KML/KMZ)</label>
+                        <input type="file" id="kml-upload" accept=".kml,.kmz" style="display:none;"
+                            onchange="handleKMLUpload(event)" />
+                        <button onclick="document.getElementById('kml-upload').click()"
+                            class="btn btn-outline text-xs w-full text-left flex justify-center items-center gap-2"
+                            data-ar="📁 اختيار ملف KML/KMZ" data-en="📁 Choose KML/KMZ File">📁 اختيار ملف
+                            KML/KMZ</button>
+                    </div>
+                </div>
+
+                <!-- Zone type selector -->
+                <div class="flex gap-3 items-center mb-3 flex-wrap">
+                    <input type="text" id="prof-draw-name" class="edit-input py-1 text-xs flex-1 min-w-0"
+                        data-ar-placeholder="اسم المنطقة (اختياري)" data-en-placeholder="Area Name (Optional)"
+                        placeholder="اسم المنطقة (اختياري)" />
+                    <select id="prof-draw-type" class="edit-input py-1 text-xs w-40">
+                        <option value="crop" data-ar="🌾 حقل محصول" data-en="🌾 Crop Field">🌾 حقل محصول</option>
+                        <option value="house" data-ar="🏠 مبنى" data-en="🏠 Building">🏠 مبنى</option>
+                        <option value="pivot" data-ar="🔄 بيفوت" data-en="🔄 Pivot">🔄 بيفوت</option>
+                        <option value="water" data-ar="💧 حوض مياه" data-en="💧 Water Basin">💧 حوض مياه</option>
+                        <option value="road" data-ar="🛣️ طريق" data-en="🛣️ Road">🛣️ طريق</option>
+                    </select>
+                </div>
+
+                <!-- Map -->
+                <div id="prof-drawing-map" style="height:320px;border-radius:14px;overflow:hidden;z-index:1;"></div>
+
+                <!-- Features list -->
+                <div class="mt-3">
+                    <p class="text-xs text-green-400 font-semibold mb-2" data-ar="المناطق المرسومة:"
+                        data-en="Drawn Areas:">المناطق المرسومة:</p>
+                    <div id="prof-feature-list" class="space-y-1 text-white text-sm">
+                        <p class="text-xs text-gray-500 italic" data-ar="لم ترسم شيئاً بعد."
+                            data-en="You haven't drawn anything yet.">لم ترسم شيئاً بعد.</p>
+                    </div>
+                    <div id="prof-total-area"
+                        style="display:none;margin-top:8px;padding:8px 12px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:10px;font-size:12px;color:#4ade80;text-align:center;font-weight:600;">
+                    </div>
+                </div>
+
+                <!-- Sector Tool Button -->
+                <button type="button" onclick="openProfSectorModal()" class="btn btn-outline w-full mt-3 text-xs"
+                    style="border-color:rgba(59,130,246,0.4);color:#93c5fd;" data-ar="🌙 رسم قوس / ربع دائرة"
+                    data-en="🌙 Draw Arc / Quarter Circle">
+                    🌙 رسم قوس / ربع دائرة
+                </button>
+
+                <!-- Alert -->
+                <div id="map-save-alert" class="alert mt-3"></div>
+
+                <!-- Save Button -->
+                <button onclick="saveMapChanges()" class="btn btn-green w-full mt-4" id="map-save-btn"
+                    data-ar="💾 حفظ تعديلات الأرض" data-en="💾 Save Land Boundaries">
+                    💾 حفظ تعديلات الأرض
+                </button>
+
+                <!-- Clear all -->
+                <button onclick="clearAllMapFeatures()"
+                    class="btn btn-outline w-full mt-2 text-xs text-red-400 border-red-400/30 hover:border-red-400"
+                    data-ar="🗑️ مسح كل المناطق" data-en="🗑️ Clear All Areas">
+                    🗑️ مسح كل المناطق
+                </button>
+            </div>
+        </section>
+
+        <!-- ── Tab: Chat History ── -->
+        <section id="tab-chat-history" class="profile-tab" style="display:none;">
+            <div class="profile-card">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-white flex items-center gap-2" data-ar="💬 سجل المحادثات"
+                        data-en="💬 Chat History">💬 سجل المحادثات</h3>
+                    <div class="flex gap-2">
+                        <button class="btn btn-outline text-xs" onclick="filterChat('all')" data-ar="الكل"
+                            data-en="All">الكل</button>
+                        <button class="btn btn-outline text-xs" onclick="filterChat('web')" data-ar="🌐 الويب"
+                            data-en="🌐 Web">🌐 الويب</button>
+                        <button class="btn btn-outline text-xs" onclick="filterChat('whatsapp')" data-ar="📱 واتساب"
+                            data-en="📱 WhatsApp">📱 واتساب</button>
+                        <button class="btn btn-outline text-xs" onclick="filterChat('telegram')" data-ar="✈️ تليجرام"
+                            data-en="✈️ Telegram">✈️ تليجرام</button>
+                    </div>
+                </div>
+                <div id="chat-history-container">
+                    <p class="text-gray-500 text-sm text-center py-8" data-ar="جاري تحميل سجل المحادثات…"
+                        data-en="Loading chat history...">جاري تحميل سجل المحادثات…</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="h-20"></div>
+    </main>
+
+    <!-- ─── Profile Sector Modal ─── -->
+    <div id="prof-sector-modal"
+        style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;">
+        <div
+            style="background:linear-gradient(135deg,#0f2417,#0a1f12);border:1px solid rgba(82,183,136,0.3);border-radius:18px;padding:24px;width:90%;max-width:380px;">
+            <h4 style="color:#fff;font-size:15px;font-weight:700;margin-bottom:16px;" data-ar="🌙 رسم قوس دائري"
+                data-en="🌙 Draw Arc">🌙 رسم قوس دائري</h4>
+
+            <label style="color:#9ca3af;font-size:12px;" data-ar="نوع القوس:" data-en="Arc Type:">نوع القوس:</label>
+            <select id="prof-sector-type"
+                style="margin-top:4px;margin-bottom:12px;width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:8px 14px;color:#e2e8f0;font-size:14px;">
+                <option value="90" data-ar="⬛ ربع دائرة (90°)" data-en="⬛ Quarter Circle (90°)">⬛ ربع دائرة (90°)
+                </option>
+                <option value="180" selected data-ar="🌙 نصف دائرة (180°)" data-en="🌙 Half Circle (180°)">🌙 نصف دائرة
+                    (180°)</option>
+                <option value="270" data-ar="🌓 ثلاثة أرباع (270°)" data-en="🌓 Three Quarters (270°)">🌓 ثلاثة أرباع
+                    (270°)</option>
+                <option value="custom" data-ar="✏️ زاوية مخصصة" data-en="✏️ Custom Angle">✏️ زاوية مخصصة</option>
+            </select>
+
+            <div id="prof-sector-custom-row" style="display:none;margin-bottom:12px;">
+                <label style="color:#9ca3af;font-size:12px;" data-ar="الزاوية (درجة):" data-en="Angle (degree):">الزاوية
+                    (درجة):</label>
+                <input type="number" id="prof-sector-custom-angle" min="1" max="359" value="120" class="edit-input"
+                    style="width:100%;margin-top:4px;" />
+            </div>
+
+            <label style="color:#9ca3af;font-size:12px;" data-ar="الاتجاه (بداية القوس):"
+                data-en="Direction (Arc Start):">الاتجاه (بداية القوس):</label>
+            <select id="prof-sector-dir"
+                style="margin-top:4px;margin-bottom:12px;width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:8px 14px;color:#e2e8f0;font-size:14px;">
+                <option value="0" data-ar="⬆️ شمال" data-en="⬆️ North">⬆️ شمال</option>
+                <option value="90" data-ar="➡️ شرق" data-en="➡️ East">➡️ شرق</option>
+                <option value="180" data-ar="⬇️ جنوب" data-en="⬇️ South">⬇️ جنوب</option>
+                <option value="270" data-ar="⬅️ غرب" data-en="⬅️ West">⬅️ غرب</option>
+                <option value="315" data-ar="↖️ شمال غرب" data-en="↖️ North-West">↖️ شمال غرب</option>
+                <option value="45" data-ar="↗️ شمال شرق" data-en="↗️ North-East">↗️ شمال شرق</option>
+            </select>
+
+            <label style="color:#9ca3af;font-size:12px;" data-ar="نصف القطر (متر):" data-en="Radius (meters):">نصف القطر
+                (متر):</label>
+            <input type="number" id="prof-sector-radius" value="200" min="10" step="10" class="edit-input"
+                style="width:100%;margin-top:4px;margin-bottom:12px;" />
+
+            <label style="color:#9ca3af;font-size:12px;" data-ar="اسم المنطقة (اختياري):"
+                data-en="Area Name (Optional):">اسم المنطقة (اختياري):</label>
+            <input type="text" id="prof-sector-name" class="edit-input"
+                style="width:100%;margin-top:4px;margin-bottom:16px;" data-ar-placeholder="مثال: ربع بيفوت الشمالي"
+                data-en-placeholder="e.g. North Quarter Pivot" placeholder="مثال: ربع بيفوت الشمالي" />
+
+            <p style="font-size:11px;color:#6b7280;margin-bottom:14px;"
+                data-ar="💡 سيُرسم القوس على مركز الخريطة الحالي. يمكنك تحريكه بأدوات التعديل."
+                data-en="💡 The arc will be drawn at the center of the map. You can move it using edit tools.">💡 سيُرسم
+                القوس على مركز الخريطة الحالي. يمكنك
+                تحريكه بأدوات التعديل.</p>
+
+            <div style="display:flex;gap:8px;">
+                <button onclick="addProfSectorToMap()"
+                    style="flex:1;padding:10px;font-size:13px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;border-radius:10px;cursor:pointer;font-weight:700;"
+                    data-ar="✅ إضافة القوس" data-en="✅ Add Arc">✅
+                    إضافة القوس</button>
+                <button onclick="closeProfSectorModal()"
+                    style="flex:1;padding:10px;font-size:13px;background:rgba(255,255,255,0.07);color:#9ca3af;border:1px solid rgba(255,255,255,0.1);border-radius:10px;cursor:pointer;"
+                    data-ar="❌ إلغاء" data-en="❌ Cancel">❌
+                    إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── Bilingual Support Initialization ──
+        window.CURRENT_LANG = localStorage.getItem('tayseer_lang') || 'ar';
+        window.t = function (ar, en) {
+            return window.CURRENT_LANG === 'en' ? en : ar;
+        };
+
+        function updateUILanguage() {
+            document.querySelectorAll('[data-ar]').forEach(el => {
+                if (el.tagName === 'INPUT' && el.hasAttribute('placeholder')) {
+                    const currentPlaceholder = el.getAttribute('placeholder');
+                    const isAr = currentPlaceholder === el.getAttribute('data-ar-placeholder');
+                    if (isAr && window.CURRENT_LANG === 'en') {
+                        el.setAttribute('placeholder', el.getAttribute('data-en-placeholder') || el.getAttribute('data-ar-placeholder'));
+                    } else if (!isAr && window.CURRENT_LANG === 'ar') {
+                        el.setAttribute('placeholder', el.getAttribute('data-ar-placeholder'));
+                    }
+                } else {
+                    el.innerHTML = window.CURRENT_LANG === 'en' ? (el.getAttribute('data-en') || el.getAttribute('data-ar')) : el.getAttribute('data-ar');
+                }
+            });
+            document.documentElement.lang = window.CURRENT_LANG;
+            document.documentElement.dir = window.CURRENT_LANG === 'ar' ? 'rtl' : 'ltr';
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            updateUILanguage();
+        });
+
+        let profMap = null;
+        let profFeatures = [];
+        let profGpsLat = null, profGpsLon = null;
+        let miniMap = null;
+        let currentChatFilter = 'all';
+        let chatData = [];
+
+        // Update language in Nominatim API calls
+        // We will replace &accept-language=ar with &accept-language=${window.CURRENT_LANG}
+
+        // ── Tab switching ──
+        function showProfileTab(tabId) {
+            document.querySelectorAll('.profile-tab').forEach(t => t.style.display = 'none');
+            document.getElementById('tab-' + tabId).style.display = 'block';
+
+            document.querySelectorAll('.tab-profile').forEach(b => b.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+
+            if (tabId === 'farm' && !miniMap) {
+                setTimeout(initMiniMap, 200);
+            }
+            if (tabId === 'map' && !profMap) {
+                setTimeout(initProfileMap, 250);
+            }
+            if (tabId === 'chat-history' && chatData.length === 0) {
+                loadChatHistory();
+            }
+        }
+
+        // ── Area helpers ──
+        function _profCalcPolyM2(coords) {
+            const toRad = d => d * Math.PI / 180;
+            const R = 6371000;
+            let area = 0;
+            const n = coords.length;
+            if (n < 3) return 0;
+            for (let i = 0; i < n; i++) {
+                const j = (i + 1) % n;
+                area += (toRad(coords[j][0]) - toRad(coords[i][0])) *
+                    (2 + Math.sin(toRad(coords[i][1])) + Math.sin(toRad(coords[j][1])));
+            }
+            return Math.abs(area * R * R / 2);
+        }
+        function _profGetM2(f) {
+            const g = f.geometry;
+            if (!g) return 0;
+            // القطاعات الدائرية: صيغة تحليلية دقيقة π×r²×angle/360
+            if (f.properties && f.properties.sectorAngle && f.properties.sectorRadius) {
+                return (f.properties.sectorAngle / 360) * Math.PI * f.properties.sectorRadius ** 2;
+            }
+            if (g.type === 'Polygon') return _profCalcPolyM2(g.coordinates[0]);
+            if (g.type === 'MultiPolygon') return g.coordinates.reduce((s, p) => s + _profCalcPolyM2(p[0]), 0);
+            if (f.properties && f.properties.radius) return Math.PI * f.properties.radius ** 2;
+            return 0;
+        }
+        function _profFmtArea(m2) {
+            const f = m2 / 4200;
+            if (f >= 1) return `${f.toFixed(2)} ${window.t('فدان', 'Feddan')}`;
+            const q = m2 / 175;
+            if (q >= 1) return `${q.toFixed(1)} ${window.t('قيراط', 'Qirat')}`;
+            return `${Math.round(m2)} ${window.t('م²', 'm²')}`;
+        }
+
+        // ── Init profile drawing map ──
+        function initProfileMap() {
+            if (profMap) return;
+            profFeatures = [];
+
+            profMap = L.map('prof-drawing-map', { zoomControl: true, attributionControl: false })
+                .setView([window.USER_LAT, window.USER_LON], 15);
+
+            L.tileLayer('https://mt1.google.com/vt/lyrs=y&hl=ar&x={x}&y={y}&z={z}', { maxZoom: 21 }).addTo(profMap);
+
+            // Geoman controls
+            profMap.pm.addControls({
+                position: 'topleft',
+                drawMarker: false, drawCircleMarker: false, drawPolyline: false,
+                drawRectangle: true, drawPolygon: true, drawCircle: true,
+                editMode: true, dragMode: false, cutPolygon: false, removalMode: true,
+            });
+            profMap.pm.setLang(window.CURRENT_LANG);
+
+            // Load existing GeoJSON onto the map
+            if (window.FARM_GEOJSON && window.FARM_GEOJSON !== 'None' && window.FARM_GEOJSON.trim() !== '') {
+                try {
+                    const geoData = JSON.parse(window.FARM_GEOJSON);
+                    if (geoData.features && geoData.features.length > 0) {
+                        geoData.features.forEach(f => {
+                            let layer;
+                            const geom = f.geometry;
+                            const props = f.properties || {};
+                            const color = props.color || '#52b788';
+
+                            if (geom.type === 'Point' && props.radius) {
+                                layer = L.circle([geom.coordinates[1], geom.coordinates[0]], {
+                                    radius: props.radius, color, fillColor: color, weight: 2, fillOpacity: 0.35
+                                });
+                            } else if (geom.type === 'Polygon') {
+                                const latlngs = geom.coordinates[0].map(c => [c[1], c[0]]);
+                                layer = L.polygon(latlngs, { color, fillColor: color, weight: 2, fillOpacity: 0.35 });
+                            } else if (geom.type === 'Rectangle' || (geom.type === 'Polygon' && geom.coordinates[0].length === 5)) {
+                                const latlngs = geom.coordinates[0].map(c => [c[1], c[0]]);
+                                layer = L.polygon(latlngs, { color, fillColor: color, weight: 2, fillOpacity: 0.35 });
+                            }
+
+                            if (layer) {
+                                const id = props.id || Date.now().toString() + Math.random().toString(36).slice(2);
+                                layer.featureId = id;
+                                const fCopy = JSON.parse(JSON.stringify(f));
+                                fCopy.properties.id = id;
+                                layer.addTo(profMap);
+                                layer.on('pm:edit', _profUpdateGeom);
+                                profFeatures.push(fCopy);
+                            }
+                        });
+
+                        const b = L.geoJSON(geoData).getBounds();
+                        if (b.isValid()) profMap.fitBounds(b);
+                    }
+                } catch (e) { console.error('Profile map GeoJSON error:', e); }
+            }
+
+            // On new shape created
+            profMap.on('pm:create', (e) => {
+                const layer = e.layer;
+                const typeStr = document.getElementById('prof-draw-type').value;
+                const typeLabel = document.getElementById('prof-draw-type').options[
+                    document.getElementById('prof-draw-type').selectedIndex].text;
+                const nameInput = document.getElementById('prof-draw-name').value.trim();
+                const finalLabel = nameInput ? `${typeLabel} - ${nameInput}` : typeLabel;
+
+                const id = Date.now().toString();
+                layer.featureId = id;
+
+                const colors = { crop: '#22c55e', house: '#facc15', pivot: '#3b82f6', water: '#06b6d4', road: '#9ca3af' };
+                const color = colors[typeStr] || '#22c55e';
+                layer.setStyle({ color, fillColor: color, fillOpacity: 0.4 });
+
+                const geojson = layer.toGeoJSON();
+                if (e.shape === 'Circle') geojson.properties.radius = layer.getRadius();
+                geojson.properties.id = id;
+                geojson.properties.zoneType = typeStr;
+                geojson.properties.zoneLabel = finalLabel;
+                geojson.properties.color = color;
+
+                document.getElementById('prof-draw-name').value = '';
+                profFeatures.push(geojson);
+                updateProfFeatureList();
+                layer.on('pm:edit', _profUpdateGeom);
+            });
+
+            // On shape removed
+            profMap.on('pm:remove', (e) => {
+                profFeatures = profFeatures.filter(f => f.properties.id !== e.layer.featureId);
+                updateProfFeatureList();
+            });
+
+            updateProfFeatureList();
+        }
+
+        function _profUpdateGeom(e) {
+            const layer = e.target;
+            const id = layer.featureId;
+            const idx = profFeatures.findIndex(f => f.properties.id === id);
+            if (idx > -1) {
+                const updated = layer.toGeoJSON();
+                updated.properties = profFeatures[idx].properties;
+                if (layer.getRadius) updated.properties.radius = layer.getRadius();
+                profFeatures[idx] = updated;
+            }
+        }
+
+        function updateProfFeatureList() {
+            const list = document.getElementById('prof-feature-list');
+            const totalEl = document.getElementById('prof-total-area');
+            if (!profFeatures.length) {
+                list.innerHTML = `<p class="text-xs text-gray-500 italic">${window.t('لم ترسم شيئاً بعد.', "You haven't drawn anything yet.")}</p>`;
+                if (totalEl) totalEl.style.display = 'none';
+                return;
+            }
+            let totalM2 = 0;
+            list.innerHTML = profFeatures.map(f => {
+                const m2 = _profGetM2(f);
+                totalM2 += m2;
+                const areaTag = m2 > 0
+                    ? `<span style="color:#4ade80;font-size:11px;">(${_profFmtArea(m2)})</span>` : '';
+                return `<div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+                    <span style="color:${f.properties.color};font-size:14px;">■</span>
+                    <span style="flex:1;font-size:13px;">${f.properties.zoneLabel}</span>
+                    ${areaTag}
+                    <button onclick="deleteProfFeature('${f.properties.id}')"
+                        style="background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171;border-radius:6px;padding:2px 8px;font-size:11px;cursor:pointer;">✕</button>
+                </div>`;
+            }).join('');
+            if (totalEl && totalM2 > 0) {
+                totalEl.textContent = `📐 ${window.t('إجمالي المساحة:', 'Total Area:')} ${_profFmtArea(totalM2)}`;
+                totalEl.style.display = 'block';
+            }
+        }
+
+        function deleteProfFeature(id) {
+            profMap.eachLayer(layer => {
+                if (layer.featureId === id) profMap.removeLayer(layer);
+            });
+            profFeatures = profFeatures.filter(f => f.properties.id !== id);
+            updateProfFeatureList();
+        }
+
+        function clearAllMapFeatures() {
+            if (!confirm(window.t('هل أنت متأكد من مسح كل المناطق المرسومة؟', 'Are you sure you want to clear all drawn areas?'))) return;
+            profMap.eachLayer(layer => {
+                if (layer.featureId) profMap.removeLayer(layer);
+            });
+            profFeatures = [];
+            updateProfFeatureList();
+        }
+
+        // ── Save map changes ──
+        async function saveMapChanges() {
+            const btn = document.getElementById('map-save-btn');
+            const alertEl = document.getElementById('map-save-alert');
+            btn.disabled = true;
+            btn.innerHTML = window.t('جاري الحفظ... ⏳', 'Saving... ⏳');
+            alertEl.className = 'alert';
+
+            const geojsonFC = { type: 'FeatureCollection', features: profFeatures };
+            const center = profMap ? profMap.getCenter() : null;
+
+            const payload = {
+                farm_geojson: JSON.stringify(geojsonFC),
+            };
+            if (center) {
+                payload.lat = parseFloat(center.lat.toFixed(6));
+                payload.lon = parseFloat(center.lng.toFixed(6));
+            }
+            if (profGpsLat !== null) { payload.lat = profGpsLat; payload.lon = profGpsLon; }
+
+            try {
+                const res = await fetch('/api/profile/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alertEl.textContent = window.t('✅ تم حفظ تعديلات الأرض بنجاح!', '✅ Map changes saved successfully!');
+                    alertEl.className = 'alert alert-success show';
+                    // Update window FARM_GEOJSON so dashboard shows new data
+                    window.FARM_GEOJSON = JSON.stringify(geojsonFC);
+                } else {
+                    alertEl.textContent = data.message || window.t('فشل الحفظ.', 'Failed to save.');
+                    alertEl.className = 'alert alert-error show';
+                }
+            } catch {
+                alertEl.textContent = window.t('خطأ في الشبكة.', 'Network error.');
+                alertEl.className = 'alert alert-error show';
+            }
+            btn.disabled = false;
+            btn.innerHTML = window.t('💾 حفظ تعديلات الأرض', '💾 Save Land Boundaries');
+        }
+
+        // ── GPS for profile map ──
+        function detectGPSProfile() {
+            const btn = document.getElementById('prof-gps-btn');
+            btn.innerHTML = window.t('⏳ جاري التحديد…', '⏳ Detecting...');
+            btn.disabled = true;
+            if (navigator.geolocation && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+                navigator.geolocation.getCurrentPosition(
+                    pos => _applyProfLocation(pos.coords.latitude, pos.coords.longitude, btn),
+                    () => _ipProfLocation(btn),
+                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+                );
+            } else { _ipProfLocation(btn); }
+        }
+        async function _ipProfLocation(btn) {
+            try {
+                const res = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(5000) });
+                const d = await res.json();
+                if (d.latitude && d.longitude) { _applyProfLocation(d.latitude, d.longitude, btn); return; }
+            } catch { }
+            btn.innerHTML = window.t('📍 موقعي', '📍 My Location'); btn.disabled = false;
+        }
+        function _applyProfLocation(lat, lon, btn) {
+            profGpsLat = parseFloat(lat.toFixed ? lat.toFixed(6) : lat);
+            profGpsLon = parseFloat(lon.toFixed ? lon.toFixed(6) : lon);
+            if (profMap) profMap.flyTo([profGpsLat, profGpsLon], 16, { animate: true, duration: 1.2 });
+            if (btn) { btn.innerHTML = window.t('✅ تم', '✅ Done'); btn.disabled = false; }
+        }
+
+        // ── Search map for profile ──
+        async function searchMapProfile() {
+            const q = document.getElementById('prof-map-search').value.trim();
+            if (!q || !profMap) return;
+            const resultsEl = document.getElementById('prof-search-results');
+            resultsEl.style.display = 'none'; resultsEl.innerHTML = '';
+            try {
+                let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q + (window.CURRENT_LANG === 'ar' ? ' مصر' : ' Egypt'))}&countrycodes=eg&limit=5&accept-language=${window.CURRENT_LANG}`;
+                let res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+                let data = await res.json();
+                if (!data || !data.length) {
+                    url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=5&accept-language=${window.CURRENT_LANG}`;
+                    res = await fetch(url, { signal: AbortSignal.timeout(6000) });
+                    data = await res.json();
+                }
+                if (data && data.length === 1) {
+                    profMap.flyTo([parseFloat(data[0].lat), parseFloat(data[0].lon)], 16);
+                } else if (data && data.length > 1) {
+                    window._profSearchResults = data;
+                    resultsEl.style.display = 'block';
+                    resultsEl.innerHTML = data.map((r, i) => `
+                        <div style="padding:8px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.06);font-size:13px;color:#e2e8f0;"
+                             onmouseover="this.style.background='rgba(34,197,94,0.12)'"
+                             onmouseout="this.style.background=''"
+                             onclick="_selectProfResult(${i})">${r.display_name}</div>`).join('');
+                }
+            } catch (e) { console.error(e); }
+        }
+        function _selectProfResult(idx) {
+            const r = window._profSearchResults[idx];
+            document.getElementById('prof-search-results').style.display = 'none';
+            if (profMap) profMap.flyTo([parseFloat(r.lat), parseFloat(r.lon)], 16);
+        }
+
+
+        // ── Mini Map ──
+        function initMiniMap() {
+            miniMap = L.map('mini-map', { zoomControl: true, attributionControl: false })
+                .setView([window.USER_LAT, window.USER_LON], 14);
+
+            L.tileLayer('https://mt1.google.com/vt/lyrs=y&hl=ar&x={x}&y={y}&z={z}', {
+                maxZoom: 21,
+                attribution: 'Google Maps'
+            }).addTo(miniMap);
+
+            const icon = L.divIcon({
+                html: '<div style="font-size:28px;line-height:1;text-shadow:0 2px 4px rgba(0,0,0,0.5);">🌿</div>',
+                iconSize: [32, 32], iconAnchor: [16, 16], className: ''
+            });
+            L.marker([window.USER_LAT, window.USER_LON], { icon }).addTo(miniMap);
+
+            if (window.FARM_GEOJSON && window.FARM_GEOJSON !== 'None' && window.FARM_GEOJSON.trim() !== '') {
+                try {
+                    const geoData = JSON.parse(window.FARM_GEOJSON);
+                    const geoLayer = L.geoJSON(geoData, {
+                        style: function (feature) {
+                            return {
+                                color: feature.properties.color || '#52b788',
+                                fillColor: feature.properties.color || '#52b788',
+                                weight: 2,
+                                fillOpacity: 0.3
+                            };
+                        },
+                        pointToLayer: function (feature, latlng) {
+                            if (feature.properties.radius) {
+                                return L.circle(latlng, {
+                                    radius: feature.properties.radius,
+                                    color: feature.properties.color,
+                                    fillColor: feature.properties.color,
+                                    weight: 2, fillOpacity: 0.3
+                                });
+                            }
+                            return L.marker(latlng);
+                        },
+                        onEachFeature: function (feature, layer) {
+                            if (feature.properties && feature.properties.zoneLabel) {
+                                layer.bindPopup(`<b>${feature.properties.zoneLabel}</b>`);
+                            }
+                        }
+                    }).addTo(miniMap);
+
+                    if (geoLayer.getBounds().isValid()) {
+                        miniMap.fitBounds(geoLayer.getBounds());
+                    }
+                } catch (e) {
+                    console.error("Failed to parse farm_geojson:", e);
+                }
+            } else {
+                L.circle([window.USER_LAT, window.USER_LON], {
+                    radius: 500, color: '#52b788', fillColor: '#52b788',
+                    fillOpacity: 0.08, weight: 2, dashArray: '6 4',
+                }).addTo(miniMap);
+            }
+
+            // ── Click on map to set coordinates ──
+            let clickMarker = null;
+            miniMap.on('click', function (e) {
+                const lat = e.latlng.lat.toFixed(6);
+                const lon = e.latlng.lng.toFixed(6);
+                document.getElementById('edit-lat').value = lat;
+                document.getElementById('edit-lon').value = lon;
+
+                if (clickMarker) miniMap.removeLayer(clickMarker);
+                const pinIcon = L.divIcon({
+                    html: '<div style="font-size:32px;line-height:1;text-shadow:0 2px 6px rgba(0,0,0,0.5);animation:bounce 0.5s;">📍</div>',
+                    iconSize: [32, 32], iconAnchor: [16, 32], className: ''
+                });
+                clickMarker = L.marker([e.latlng.lat, e.latlng.lng], { icon: pinIcon }).addTo(miniMap);
+                clickMarker.bindPopup(`<b>${window.t('الموقع الجديد', 'New Location')}</b><br>Lat: ${lat}<br>Lon: ${lon}`).openPopup();
+
+                showProfileAlert(window.t('📍 تم تحديد الموقع — اضغط "حفظ التعديلات" للتأكيد', '📍 Location set — Click "Save Changes" to confirm'), 'success');
+            });
+        }
+
+        // \u2500\u2500 Save Personal Info (name / phone / email) \u2500\u2500
+        async function savePersonalInfo() {
+            const btn = document.getElementById('save-personal-btn');
+            const alertEl = document.getElementById('personal-info-alert');
+            btn.disabled = true;
+            btn.innerHTML = window.t('\u062c\u0627\u0631\u064a \u0627\u0644\u062d\u0641\u0638... \u23f3', 'Saving... \u23f3');
+            alertEl.textContent = '';
+            alertEl.className = 'alert';
+
+            const payload = {
+                name: document.getElementById('edit-name').value.trim(),
+                phone: document.getElementById('edit-phone').value.trim(),
+                email: document.getElementById('edit-email').value.trim(),
+            };
+
+            try {
+                const res = await fetch('/api/profile/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alertEl.textContent = window.t('\u2705 \u062a\u0645 \u062d\u0641\u0638 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0634\u062e\u0635\u064a\u0629 \u0628\u0646\u062c\u0627\u062d.', '\u2705 Personal info saved successfully.');
+                    alertEl.className = 'alert alert-success show';
+                } else {
+                    alertEl.textContent = data.message || window.t('\u062d\u062f\u062b \u062e\u0637\u0623 \u0623\u062b\u0646\u0627\u0621 \u0627\u0644\u062d\u0641\u0638.', 'An error occurred while saving.');
+                    alertEl.className = 'alert alert-error show';
+                }
+            } catch {
+                alertEl.textContent = window.t('\u062e\u0637\u0623 \u0641\u064a \u0627\u0644\u0634\u0628\u0643\u0629.', 'Network error.');
+                alertEl.className = 'alert alert-error show';
+            }
+            btn.disabled = false;
+            btn.innerHTML = window.t('\ud83d\udcbe \u062d\u0641\u0638 \u0627\u0644\u0628\u064a\u0627\u0646\u0627\u062a \u0627\u0644\u0634\u062e\u0635\u064a\u0629', '\ud83d\udcbe Save Personal Info');
+        }
+
+        // \u2500\u2500 Save Irrigation Device / Well Data \u2500\u2500
+        async function saveIrrigationDevice() {
+            const btn = document.getElementById('well-save-btn');
+            const alertEl = document.getElementById('well-save-alert');
+            btn.disabled = true;
+            btn.innerHTML = window.t('\u062c\u0627\u0631\u064a \u0627\u0644\u062d\u0641\u0638... \u23f3', 'Saving... \u23f3');
+            alertEl.textContent = '';
+            alertEl.className = 'alert';
+
+            const payload = {
+                irrigation_type: document.getElementById('edit-irrigation-type').value,
+                well_flow_rate: parseFloat(document.getElementById('edit-well-flow-rate').value) || 0,
+                pump_flow_rate_m3_per_hr: parseFloat(document.getElementById('edit-well-flow-rate').value) || 0,
+                well_depth: parseFloat(document.getElementById('edit-well-depth').value) || 0,
+                pump_power_kw: parseFloat(document.getElementById('edit-pump-power').value) || 0,
+                pump_head_m: parseFloat(document.getElementById('edit-pump-head').value) || 0,
+            };
+
+            try {
+                const res = await fetch('/api/profile/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alertEl.textContent = window.t('\u2705 \u062a\u0645 \u062d\u0641\u0638 \u0628\u064a\u0627\u0646\u0627\u062a \u062c\u0647\u0627\u0632 \u0627\u0644\u0631\u064a \u0628\u0646\u062c\u0627\u062d.', '\u2705 Irrigation device data saved successfully.');
+                    alertEl.className = 'alert alert-success show';
+                } else {
+                    alertEl.textContent = data.message || window.t('\u062d\u062f\u062b \u062e\u0637\u0623 \u0623\u062b\u0646\u0627\u0621 \u0627\u0644\u062d\u0641\u0638.', 'An error occurred while saving.');
+                    alertEl.className = 'alert alert-error show';
+                }
+            } catch {
+                alertEl.textContent = window.t('\u062e\u0637\u0623 \u0641\u064a \u0627\u0644\u0634\u0628\u0643\u0629.', 'Network error.');
+                alertEl.className = 'alert alert-error show';
+            }
+            btn.disabled = false;
+            btn.innerHTML = window.t('\ud83d\udcbe \u062d\u0641\u0638 \u0628\u064a\u0627\u0646\u0627\u062a \u062c\u0647\u0627\u0632 \u0627\u0644\u0631\u064a', '\ud83d\udcbe Save Irrigation Device Data');
+        }
+
+        // \u2500\u2500 Save Profile \u2500\u2500
+        async function saveProfile() {
+            const btn = document.getElementById('save-btn');
+            btn.disabled = true;
+            btn.innerHTML = window.t('جاري الحفظ... ⏳', 'Saving... ⏳');
+            clearProfileAlert();
+
+            const latVal = document.getElementById('edit-lat').value;
+            const lonVal = document.getElementById('edit-lon').value;
+
+            const payload = {
+                name: document.getElementById('edit-name').value.trim(),
+                phone: document.getElementById('edit-phone').value.trim(),
+                email: document.getElementById('edit-email').value.trim(),
+                farm_location: document.getElementById('edit-farm-location').value.trim(),
+                crop_type: document.getElementById('edit-crop-type').value.trim(),
+                area_feddan: parseFloat(document.getElementById('edit-area').value) || 0,
+                lat: latVal ? parseFloat(latVal) : null,
+                lon: lonVal ? parseFloat(lonVal) : null,
+            };
+
+            try {
+                const res = await fetch('/api/profile/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showProfileAlert(window.t('✅ تم حفظ التعديلات بنجاح!', '✅ Changes saved successfully!'), 'success');
+                } else {
+                    showProfileAlert(data.message || window.t('فشل الحفظ.', 'Failed to save.'), 'error');
+                }
+            } catch {
+                showProfileAlert(window.t('خطأ في الشبكة.', 'Network error.'), 'error');
+            }
+            btn.disabled = false;
+            btn.innerHTML = window.t('💾 حفظ التعديلات', '💾 Save Changes');
+        }
+
+        // ── Change Password ──
+        async function changePassword() {
+            const btn = document.getElementById('btn-change-pwd');
+            btn.disabled = true;
+            btn.innerHTML = window.t('جاري التغيير... ⏳', 'Changing... ⏳');
+            clearProfileAlert();
+
+            const payload = {
+                current_password: document.getElementById('edit-current-pwd').value,
+                new_password: document.getElementById('edit-new-pwd').value,
+                confirm_password: document.getElementById('edit-confirm-pwd').value,
+            };
+
+            if (!payload.current_password || !payload.new_password || !payload.confirm_password) {
+                showProfileAlert(window.t('يرجى ملء جميع حقول كلمة المرور.', 'Please fill out all password fields.'), 'error');
+                btn.disabled = false;
+                btn.innerHTML = window.t('تسجيل كلمة المرور الجديدة', 'Set New Password');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/profile/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showProfileAlert('✅ ' + data.message, 'success');
+                    // Clear inputs
+                    document.getElementById('edit-current-pwd').value = '';
+                    document.getElementById('edit-new-pwd').value = '';
+                    document.getElementById('edit-confirm-pwd').value = '';
+                } else {
+                    showProfileAlert(data.message || window.t('فشل تغيير كلمة المرور.', 'Failed to change password.'), 'error');
+                }
+            } catch {
+                showProfileAlert(window.t('خطأ في الشبكة.', 'Network error.'), 'error');
+            }
+            btn.disabled = false;
+            btn.innerHTML = window.t('تسجيل كلمة المرور الجديدة', 'Set New Password');
+        }
+
+        // ── Chat History ──
+        async function loadChatHistory() {
+            try {
+                const res = await fetch('/api/chat-history');
+                const data = await res.json();
+                if (data.success) {
+                    chatData = data.history;
+                    renderChatHistory();
+                } else {
+                    document.getElementById('chat-history-container').innerHTML =
+                        `<p class="text-gray-500 text-sm text-center py-8">${window.t('لا توجد محادثات سابقة.', 'No chat history found.')}</p>`;
+                }
+            } catch {
+                document.getElementById('chat-history-container').innerHTML =
+                    `<p class="text-red-400 text-sm text-center py-8">${window.t('خطأ في تحميل المحادثات.', 'Error loading chats.')}</p>`;
+            }
+        }
+
+        function filterChat(channel) {
+            currentChatFilter = channel;
+            renderChatHistory();
+        }
+
+        function renderChatHistory() {
+            const container = document.getElementById('chat-history-container');
+            let filtered = currentChatFilter === 'all'
+                ? chatData
+                : chatData.filter(c => c.channel === currentChatFilter);
+
+            if (!filtered.length) {
+                container.innerHTML = `<p class="text-gray-500 text-sm text-center py-8">${window.t('لا توجد محادثات في هذا القسم.', 'No chats found for this section.')}</p>`;
+                return;
+            }
+
+            const channelIcons = { web: '🌐', whatsapp: '📱', telegram: '✈️' };
+            const channelNames = {
+                web: window.t('الويب', 'Web'),
+                whatsapp: window.t('واتساب', 'WhatsApp'),
+                telegram: window.t('تليجرام', 'Telegram')
+            };
+
+            container.innerHTML = filtered.map(c => `
+                <div class="chat-log-item">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs text-green-400 font-semibold">${channelIcons[c.channel] || '💬'} ${channelNames[c.channel] || c.channel}</span>
+                        <span class="text-xs text-gray-500">${c.timestamp || '—'}</span>
+                    </div>
+                    <div class="flex gap-3 mb-2">
+                        <span class="text-xs text-blue-300 font-semibold flex-shrink-0">👤 ${window.t('أنت:', 'You:')}</span>
+                        <p class="text-sm text-gray-300">${c.message}</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <span class="text-xs text-green-300 font-semibold flex-shrink-0">🤖 ${window.t('المساعد:', 'Assistant:')}</span>
+                        <p class="text-sm text-gray-200">${c.response}</p>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ── Alerts ──
+        function showProfileAlert(msg, type = 'error') {
+            const el = document.getElementById('profile-alert');
+            el.textContent = msg;
+            el.className = `alert alert-${type} show`;
+        }
+        function clearProfileAlert() {
+            document.getElementById('profile-alert').className = 'alert';
+        }
+
+        /* ── Sector / Arc Drawing (Profile) ── */
+        let _profSectorClickMode = false;
+
+        function openProfSectorModal() {
+            if (!profMap) return;
+            const modal = document.getElementById('prof-sector-modal');
+            modal.style.display = 'flex';
+            document.getElementById('prof-sector-type').onchange = function () {
+                document.getElementById('prof-sector-custom-row').style.display =
+                    this.value === 'custom' ? 'block' : 'none';
+            };
+        }
+        function closeProfSectorModal() {
+            document.getElementById('prof-sector-modal').style.display = 'none';
+            _profSectorClickMode = false;
+            if (profMap) profMap.getContainer().style.cursor = '';
+        }
+
+        function generateProfSectorPoints(centerLat, centerLon, radiusM, startDeg, angleDeg) {
+            const toRad = d => d * Math.PI / 180;
+            const R = 6371000;
+            const steps = Math.max(32, Math.round(angleDeg / 3));
+            const points = [];
+            points.push([centerLon, centerLat]);
+            for (let i = 0; i <= steps; i++) {
+                const bearing = toRad(startDeg + (angleDeg * i / steps));
+                const lat = centerLat + (radiusM / R) * (180 / Math.PI) * Math.cos(bearing);
+                const lon = centerLon + (radiusM / R) * (180 / Math.PI) * Math.sin(bearing) / Math.cos(toRad(centerLat));
+                points.push([lon, lat]);
+            }
+            points.push([centerLon, centerLat]);
+            return points;
+        }
+
+        function addProfSectorToMap() {
+            const typeVal = document.getElementById('prof-sector-type').value;
+            const startDeg = parseFloat(document.getElementById('prof-sector-dir').value);
+            const radiusM = parseFloat(document.getElementById('prof-sector-radius').value) || 200;
+            const nameInput = document.getElementById('prof-sector-name').value.trim();
+
+            let angleDeg;
+            if (typeVal === 'custom') {
+                angleDeg = parseFloat(document.getElementById('prof-sector-custom-angle').value) || 120;
+            } else {
+                angleDeg = parseFloat(typeVal);
+            }
+
+            const typeLabels = { '90': window.t('ربع دائرة', 'Quarter Circle'), '180': window.t('نصف دائرة', 'Half Circle'), '270': window.t('ثلاثة أرباع دائرة', 'Three Quarters') };
+            const label = nameInput ? nameInput : (typeLabels[typeVal] || `${window.t('قوس', 'Arc')} ${angleDeg}°`);
+
+            // إغلاق ال modal وتفعيل وضع النقر على الخريطة
+            closeProfSectorModal();
+            _profSectorClickMode = true;
+            profMap.getContainer().style.cursor = 'crosshair';
+
+            // تلميح للمستخدم
+            const alertEl = document.getElementById('map-save-alert');
+            alertEl.textContent = window.t('📏 انقر على الخريطة لتحديد مركز القوس', '📏 Click on the map to set the arc center');
+            alertEl.className = 'alert alert-success show';
+
+            const onMapClick = function (e) {
+                if (!_profSectorClickMode) return;
+                _profSectorClickMode = false;
+                profMap.getContainer().style.cursor = '';
+                profMap.off('click', onMapClick);
+                alertEl.className = 'alert';
+
+                const coords = generateProfSectorPoints(e.latlng.lat, e.latlng.lng, radiusM, startDeg, angleDeg);
+                const color = '#3b82f6';
+                const id = Date.now().toString();
+
+                const latlngs = coords.map(c => [c[1], c[0]]);
+                const layer = L.polygon(latlngs, { color, fillColor: color, weight: 2, fillOpacity: 0.38 }).addTo(profMap);
+                layer.featureId = id;
+                layer.on('pm:edit', _profUpdateGeom);
+
+                const geojson = {
+                    type: 'Feature',
+                    geometry: { type: 'Polygon', coordinates: [coords] },
+                    properties: { id, zoneType: 'pivot', zoneLabel: label, color, sectorAngle: angleDeg, sectorRadius: radiusM }
+                };
+                profFeatures.push(geojson);
+                updateProfFeatureList();
+                profMap.fitBounds(layer.getBounds(), { padding: [20, 20] });
+                document.getElementById('prof-sector-name').value = '';
+            };
+            profMap.on('click', onMapClick);
+        }
+
+        // ── KML/KMZ Import ──
+        function handleKMLUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const kmlContent = event.target.result;
+
+                try {
+                    // Omnivore requires a URL, so we create a Blob URL for local files
+                    const blob = new Blob([kmlContent], { type: 'application/vnd.google-earth.kml+xml' });
+                    const url = URL.createObjectURL(blob);
+
+                    const kmlLayer = omnivore.kml(url)
+                        .on('ready', function () {
+                            const bounds = this.getBounds();
+                            if (bounds.isValid()) {
+                                profMap.fitBounds(bounds);
+                            }
+
+                            // Iterate over loaded layers, assign Geoman and add to profFeatures
+                            this.eachLayer(function (layer) {
+                                // Default color
+                                const color = '#3b82f6';
+                                layer.setStyle({ color: color, fillColor: color, weight: 2, fillOpacity: 0.35 });
+
+                                const id = Date.now().toString() + Math.random().toString(36).slice(2);
+                                layer.featureId = id;
+
+                                // Make it editable by Leaflet-Geoman
+                                layer.addTo(profMap);
+                                layer.on('pm:edit', _profUpdateGeom);
+
+                                const geojson = layer.toGeoJSON();
+                                const label = geojson.properties && geojson.properties.name
+                                    ? geojson.properties.name
+                                    : window.t('منطقة KML المستوردة', 'Imported KML Area');
+
+                                geojson.properties.id = id;
+                                geojson.properties.zoneType = 'crop'; // Default
+                                geojson.properties.zoneLabel = label;
+                                geojson.properties.color = color;
+
+                                profFeatures.push(geojson);
+                            });
+
+                            updateProfFeatureList();
+
+                            // Notify user
+                            const alertMsg = window.CURRENT_LANG === 'ar' ? '✅ تم استيراد الخريطة بنجاح!' : '✅ Map imported successfully!';
+                            const alertEl = document.getElementById('map-save-alert');
+                            alertEl.textContent = alertMsg;
+                            alertEl.className = 'alert alert-success show';
+                            setTimeout(() => { alertEl.className = 'alert'; }, 4000);
+                        })
+                        .on('error', function () {
+                            const alertMsg = window.CURRENT_LANG === 'ar' ? '❌ فشل في قراءة ملف KML/KMZ. تأكد من صحة الملف.' : '❌ Failed to read KML/KMZ file. Check if it is valid.';
+                            const alertEl = document.getElementById('map-save-alert');
+                            alertEl.textContent = alertMsg;
+                            alertEl.className = 'alert alert-error show';
+                            setTimeout(() => { alertEl.className = 'alert'; }, 4000);
+                        });
+
+                } catch (err) {
+                    console.error('KML Import Error:', err);
+                }
+            };
+
+            // Read as text (KML is XML)
+            reader.readAsText(file);
+            // Reset input
+            e.target.value = '';
+        }
+
+    </script>
+
+</body>
+
+</html>

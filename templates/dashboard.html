@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title data-ar="Tayseer-AgriSaT — Dashboard — لوحة التحكم" data-en="Tayseer-AgriSaT — Dashboard">Tayseer-AgriSaT —
+        Dashboard — لوحة التحكم</title>
+    <meta name="description"
+        content="لوحة تحكم ذكية لمراقبة مزرعتك بالأقمار الصناعية — NDVI، التبخر، صحة المحصول، وتوقعات الطقس." />
+
+    <!-- External CSS with Cache Busting -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ BUILD_VERSION }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}?v={{ BUILD_VERSION }}" />
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- MapLibre GL JS -->
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+
+    <!-- Google Fonts: Cairo -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap"
+        rel="stylesheet" />
+
+    <!-- Pass backend variables to JS -->
+    <script>
+        window.USER_LAT = Number("{{ user.lat }}") || 30.0;
+        window.USER_LON = Number("{{ user.lon }}") || 31.0;
+        window.USER_NAME = "{{ user.name }}";
+        window.FARM_GEOJSON = `{{ user.farm_geojson | default('', true) | safe }}`;
+        window.AREA_FEDDAN = Number("{{ user.area_feddan }}") || 1.0;
+        window.CROP_TYPE = "{{ user.crop_type | default('المحصول', true) }}";
+        window.CURRENT_LANG = localStorage.getItem('tayseer_lang') || 'ar';
+        window.IRRIGATION_TYPE = "{{ user.irrigation_type | default('drip', true) }}";
+        window.PUMP_FLOW_RATE = Number("{{ user.pump_flow_rate | default(50, true) }}") || 50.0;
+        window.PUMP_POWER_KW = Number("{{ user.pump_power_kw | default(0, true) }}") || 0;
+        // بيانات البئر / التوربينة
+        window.WELL_FLOW_RATE = Number("{{ user.well_flow_rate | default(0, true) }}") || 0;
+        window.WELL_DEPTH = Number("{{ user.well_depth | default(0, true) }}") || 0;
+        window.PUMP_HEAD_M = Number("{{ user.pump_head_m | default(0, true) }}") || 0;
+    </script>
+
+</head>
+
+<body class="flex">
+
+    <!-- ── LOADING OVERLAY ── -->
+    <div id="loading-overlay">
+        <div class="loading-ring"></div>
+        <p class="text-green-400 font-semibold" data-ar="جاري تحميل بيانات مزرعتك…" data-en="Loading your farm data...">
+            جاري تحميل بيانات مزرعتك…</p>
+    </div>
+
+    <!-- ── SIDEBAR ── -->
+    {% include 'sidebar.html' ignore missing %}
+
+    <!-- ── MAIN CONTENT ── -->
+    <main class="flex-1 overflow-y-auto p-5 md:p-7 space-y-7 relative">
+
+        <!-- Mobile header -->
+        <div class="flex items-center justify-between md:hidden mb-2">
+            <div class="flex items-center gap-2">
+                <span class="text-3xl">🛰️</span>
+                <h1 class="text-xl font-extrabold text-white">Tayseer-AgriSaT</h1>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="runPipeline(this)" class="btn btn-green text-xs" data-ar="🔄 تحديث"
+                    data-en="🔄 Refresh">🔄 تحديث</button>
+                <!-- Add a simple mobile menu toggler if needed, otherwise rely on scrolling or a select box -->
+            </div>
+        </div>
+
+        <!-- ── SECTION: Organisation Overview ── -->
+        <section id="section-overview" class="dashboard-section glass p-6 active">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2" data-ar="🏡 نظرة عامة على مزرعتك"
+                data-en="🏡 Farm Overview">🏡 نظرة عامة على مزرعتك</h3>
+
+            <div class="flex flex-col md:flex-row items-start md:items-center gap-5 mt-5">
+                <div
+                    class="w-20 h-20 rounded-full bg-gradient-to-br from-green-600 to-emerald-900 flex items-center justify-center text-4xl flex-shrink-0 border-2 border-green-500/30">
+                    🧑‍🌾
+                </div>
+                <div class="flex-1">
+                    <h2 id="user-name" class="text-2xl font-extrabold text-white mb-1">{{ user.name }}</h2>
+
+                    <!-- ═══ FARM NAME BLOCK — Separated from brand ═══ -->
+                    <!-- This is the user's farm name, NOT the platform name -->
+                    <div class="flex items-center gap-3 mb-2 flex-wrap">
+                        <div class="farm-name-display" onclick="editFarmName()" title="اضغط لتعديل اسم مزرعتك">
+                            <span class="farm-label">🌾 اسم المزرعة</span>
+                            <span class="farm-value" id="header-farm-name">
+                                {{ user.farm_name if user.farm_name else ('مزرعة ' + user.name) }}
+                            </span>
+                            {% if user.pending_farm_name %}
+                            <span class="badge badge-pending" style="font-size:9px;">⏳ قيد المراجعة</span>
+                            {% elif user.farm_name %}
+                            <span style="font-size:11px; color: #34d399;">✅</span>
+                            {% endif %}
+                            <span class="edit-icon">✏️</span>
+                        </div>
+                        {% if user.pending_farm_name %}
+                        <span class="text-xs text-yellow-400">طلب: "{{ user.pending_farm_name }}"</span>
+                        {% endif %}
+                    </div>
+
+                    {% if is_impersonating %}
+                    <div
+                        class="bg-primary/20 border border-primary text-primary px-3 py-1 rounded-md mb-2 inline-block text-sm">
+                        <i class="bi bi-eye"></i> أنت الآن تتصفح كعميل. <a
+                            href="{{ url_for('admin_stop_impersonation') }}"
+                            class="text-white hover:underline ms-2">العودة للوحة المشرف</a>
+                    </div>
+                    {% endif %}
+
+                    <div class="flex flex-wrap gap-3 text-sm text-gray-400">
+                        <span>🏠 <span id="farm-full-address" class="text-green-300" data-ar="جاري تحديد العنوان..."
+                                data-en="Locating address...">جاري تحديد العنوان...</span></span>
+                        <span><span data-ar="🌾 نوع المحصول: " data-en="🌾 Crop Type: ">🌾 نوع المحصول: </span><span
+                                id="crop-type" class="text-green-300">{{ user.crop_type or '—'
+                                }}</span></span>
+                        <span>💾 <span id="area-feddan">{{ user.area_feddan or '—' }}</span> <span data-ar="فدان"
+                                data-en="Feddan">فدان</span></span>
+                        <span>📡 <span id="farm-coords">{{ user.lat|round(4) if user.lat else '—' }}° , {{
+                                user.lon|round(4) if user.lon else '—' }}°</span></span>
+                        <span id="header-farm-span" class="hidden">{{ user.farm_name if user.farm_name else '' }}</span>
+                    </div>
+                </div>
+                <div>
+                    <span class="badge badge-healthy text-lg" id="status-badge" data-ar="⏳ جاري التحميل…"
+                        data-en="⏳ Loading...">⏳ جاري التحميل…</span>
+                </div>
+            </div>
+
+            <!-- ── Current Weather Summary ── -->
+            <div class="mt-6 mb-2">
+                <h4 class="text-md font-bold text-white mb-3 flex items-center gap-2" data-ar="🌤️ حالة الطقس الحالية"
+                    data-en="🌤️ Current Weather">🌤️ حالة الطقس الحالية</h4>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3" id="current-weather-grid">
+                    <div class="glass p-4 rounded-xl text-center">
+                        <p class="text-xs text-gray-400 mb-1" data-ar="🌡️ درجة الحرارة" data-en="🌡️ Temperature">🌡️
+                            درجة الحرارة</p>
+                        <p class="text-2xl font-bold text-white" id="cw-temp">—</p>
+                    </div>
+                    <div class="glass p-4 rounded-xl text-center">
+                        <p class="text-xs text-gray-400 mb-1" data-ar="💧 الرطوبة" data-en="💧 Humidity">💧 الرطوبة</p>
+                        <p class="text-2xl font-bold text-white" id="cw-humidity">—</p>
+                    </div>
+                    <div class="glass p-4 rounded-xl text-center">
+                        <p class="text-xs text-gray-400 mb-1" data-ar="🌬️ سرعة الرياح" data-en="🌬️ Wind Speed">🌬️
+                            سرعة الرياح</p>
+                        <p class="text-2xl font-bold text-white" id="cw-wind">—</p>
+                    </div>
+                    <div class="glass p-4 rounded-xl text-center">
+                        <p class="text-xs text-gray-400 mb-1" data-ar="☁️ الوصف" data-en="☁️ Description">☁️ الوصف</p>
+                        <p class="text-lg font-bold text-white" id="cw-desc">—</p>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- ── Real Land/Soil Condition ── -->
+            <div class="mt-5">
+                <h4 class="text-md font-bold text-white mb-3 flex items-center gap-2" data-ar="🌍 حالة الأرض والتربة"
+                    data-en="🌍 Land & Soil Condition">🌍 حالة الأرض والتربة</h4>
+                <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3" id="land-condition-grid">
+                    <!-- Card 1: نوع المحصول -->
+                    <div class="glass p-4 rounded-xl border-r-4" id="lc-vegetation" style="border-color: #6b7280;">
+                        <p class="text-xs text-gray-400 mb-1" id="lc-crop-label" data-ar="🌾 نوع المحصول"
+                            data-en="🌾 Crop Type">🌾 نوع المحصول</p>
+                        <p class="text-lg font-bold text-white" id="lc-veg-status">—</p>
+                        <p class="text-xs text-gray-500 mt-1" id="lc-veg-detail"></p>
+                    </div>
+                    <!-- Card 2: رطوبة التربة -->
+                    <div class="glass p-4 rounded-xl border-r-4" id="lc-moisture" style="border-color: #6b7280;">
+                        <p class="text-xs text-gray-400 mb-1" data-ar="💧 رطوبة التربة" data-en="💧 Soil Moisture">💧
+                            رطوبة التربة</p>
+                        <p class="text-lg font-bold text-white" id="lc-moist-status">—</p>
+                        <p class="text-xs text-gray-500 mt-1" id="lc-moist-detail"></p>
+                    </div>
+                    <!-- Card 3: حرارة التربة (LST) -->
+                    <div class="glass p-4 rounded-xl border-r-4" id="lc-temp" style="border-color: #6b7280;">
+                        <p class="text-xs text-gray-400 mb-1" data-ar="🌡️ حرارة التربة" data-en="🌡️ Soil Temp">🌡️
+                            حرارة التربة</p>
+                        <p class="text-lg font-bold text-white" id="lc-temp-status">—</p>
+                        <p class="text-xs text-gray-500 mt-1" id="lc-temp-detail"></p>
+                    </div>
+                    <!-- Card 4: حرارة النبات -->
+                    <div class="glass p-4 rounded-xl border-r-4" id="lc-veg-temp" style="border-color: #6b7280;">
+                        <p class="text-xs text-gray-400 mb-1" data-ar="🌿 حرارة النبات" data-en="🌿 Plant Temp">🌿 حرارة
+                            النبات</p>
+                        <p class="text-lg font-bold text-white" id="lc-veg-temp-status">—</p>
+                        <p class="text-xs text-gray-500 mt-1" id="lc-veg-temp-detail"></p>
+                    </div>
+                    <!-- Card 5: حرارة سطح LST الكلية -->
+                    <div class="glass p-4 rounded-xl border-r-4" id="lc-lst-combined" style="border-color: #6b7280;">
+                        <p class="text-xs text-gray-400 mb-1" data-ar="🌡️ LST (تربة+نبات معاً)"
+                            data-en="🌡️ LST (Soil+Plant)">🌡️ LST (تربة+نبات معاً)</p>
+                        <p class="text-lg font-bold text-white" id="lc-lst-status">—</p>
+                        <p class="text-xs text-gray-500 mt-1" id="lc-lst-detail" data-ar="القراءة الفضائية الخام"
+                            data-en="Raw Satellite Reading">القراءة الفضائية الخام</p>
+                    </div>
+                    <!-- Card 6: مؤشر الجفاف -->
+                    <div class="glass p-4 rounded-xl border-r-4" id="lc-drought" style="border-color: #6b7280;">
+                        <p class="text-xs text-gray-400 mb-1" data-ar="🏖️ مؤشر الجفاف (TVDI)"
+                            data-en="🏖️ Drought Index (TVDI)">🏖️ مؤشر الجفاف (TVDI)</p>
+                        <p class="text-lg font-bold text-white" id="lc-drought-status">—</p>
+                        <p class="text-xs text-gray-500 mt-1" id="lc-drought-detail"></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ── SECTION: Crops Details ── -->
+        <section id="section-crops" class="dashboard-section glass p-6">
+            <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2" data-ar="🌾 تفاصيل المحاصيل المزروعة"
+                data-en="🌾 Planted Crops Details">🌾 تفاصيل المحاصيل المزروعة</h3>
+            <p class="text-sm text-gray-400 mb-6" data-ar="احصائيات ومساحات كل محصول في المزرعة بناءً على الخريطة."
+                data-en="Statistics and areas of each crop in the farm based on the map.">احصائيات ومساحات كل محصول في
+                المزرعة بناءً على الخريطة.</p>
+
+            <div id="crop-cards-grid"
+                class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t border-white/10 pt-4">
+                <!-- Crop cards rendered via JS go here -->
+                <p class="text-gray-500 text-sm col-span-full" data-ar="لم يتم رسم أي مناطق على الخريطة بعد."
+                    data-en="No areas have been drawn on the map yet.">لم يتم رسم أي مناطق على الخريطة بعد.</p>
+            </div>
+        </section>
+
+        <!-- ── SECTION: Alerts ── -->
+        <section id="section-alerts" class="dashboard-section glass p-6">
+            <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2"
+                data-ar="⚠️ التحذيرات والتنبيهات الزراعية" data-en="⚠️ Agricultural Alerts & Warnings">⚠️ التحذيرات
+                والتنبيهات الزراعية</h3>
+            <div id="alerts-container">
+                <p class="text-gray-500 text-sm py-4" data-ar="جاري تحميل التحذيرات…" data-en="Loading alerts...">جاري
+                    تحميل التحذيرات…</p>
+            </div>
+        </section>
+
+        <!-- ── SECTION: Weather Forecast ── -->
+        <section id="section-weather" class="dashboard-section glass p-6">
+            <h3 class="text-lg font-bold text-white mb-5 flex items-center gap-2" data-ar="🌤️ توقعات الطقس لـ 5 أيام"
+                data-en="🌤️ 5-Day Weather Forecast">🌤️ توقعات الطقس لـ 5 أيام</h3>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3" id="weather-grid">
+                <p class="col-span-5 text-gray-500 text-sm text-center py-6" data-ar="جاري تحميل الطقس…"
+                    data-en="Loading weather...">جاري تحميل الطقس…</p>
+            </div>
+        </section>
+
+        <!-- ── SECTION: Map (Risk Map — 3D MapLibre GL JS) ── -->
+        <section id="section-map" class="dashboard-section glass p-5">
+            <!-- Header: Title + Basemap Switcher -->
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    🗺️ <span data-ar="خريطة المخاطر — بالأقمار الصناعية" data-en="Risk Map — Satellite">خريطة المخاطر —
+                        بالأقمار الصناعية</span>
+                </h3>
+                <div class="flex gap-2 flex-wrap items-center">
+                    <span class="text-xs text-gray-500" data-ar="خريطة الأساس:" data-en="Basemap:">خريطة الأساس:</span>
+                    <button class="btn btn-green  text-xs" onclick="switchBasemap('google_sat')" id="bm-google_sat">🛰️
+                        صورة جوية</button>
+                    <button class="btn btn-outline text-xs" onclick="switchBasemap('google_hybrid')"
+                        id="bm-google_hybrid">🗺️ هجين</button>
+                    <button class="btn btn-outline text-xs" onclick="switchBasemap('osm')" id="bm-osm">🌍 OSM</button>
+                    <button class="btn btn-outline text-xs" onclick="switchBasemap('esri')" id="bm-esri">🏔️
+                        ESRI</button>
+                </div>
+            </div>
+
+            <!-- GEE Layer Toggles (11 layers) -->
+            <div class="flex gap-2 flex-wrap mb-3" id="gee-layer-buttons">
+                <span class="text-xs text-gray-400 self-center">طبقات GEE:</span>
+                <button class="btn btn-green  text-xs gee-btn" data-layer="ndvi" onclick="toggleGEELayer('ndvi')">🌿
+                    NDVI</button>
+                <button class="btn btn-outline text-xs gee-btn" data-layer="et" onclick="toggleGEELayer('et')">☁️
+                    ET</button>
+                <button class="btn btn-outline text-xs gee-btn" data-layer="ndwi" onclick="toggleGEELayer('ndwi')">💧
+                    NDWI</button>
+                <button class="btn btn-outline text-xs gee-btn" data-layer="ndsi" onclick="toggleGEELayer('ndsi')">❄️
+                    NDSI</button>
+                <button class="btn btn-outline text-xs gee-btn" data-layer="soil_moisture"
+                    onclick="toggleGEELayer('soil_moisture')">🟤 Soil</button>
+                <button class="btn btn-outline text-xs gee-btn" data-layer="biomass"
+                    onclick="toggleGEELayer('biomass')">🌾 Biomass</button>
+                <button class="btn btn-outline text-xs gee-btn" data-layer="tvdi" onclick="toggleGEELayer('tvdi')">🏖️
+                    TVDI</button>
+                <button class="btn btn-outline text-xs gee-btn" data-layer="tphc" onclick="toggleGEELayer('tphc')">⚙️
+                    TPHC</button>
+                <button class="btn btn-outline text-xs gee-btn" data-layer="wwfi" onclick="toggleGEELayer('wwfi')">💦
+                    WWFI</button>
+                <button class="btn btn-outline text-xs gee-btn" data-layer="lst_soil"
+                    onclick="toggleGEELayer('lst_soil')">🌡️ LST-تربة</button>
+                <button class="btn btn-outline text-xs gee-btn" data-layer="lst_canopy"
+                    onclick="toggleGEELayer('lst_canopy')">🌿 LST-نبات</button>
+                <button class="btn btn-outline text-xs" id="btn-gen-tiles" onclick="generateTiles()">🔄 تحديث
+                    الطبقات</button>
+            </div>
+
+
+            <!-- CSV Upload & Opacity Slider -->
+            <div class="flex items-center gap-3 mb-3 flex-wrap">
+                <label class="btn btn-outline text-xs cursor-pointer">
+                    <span>📤 رفع CSV</span>
+                    <input type="file" id="csv-file-input" accept=".csv" class="hidden" onchange="uploadCSV(this)" />
+                </label>
+                <span class="text-xs text-gray-500" id="csv-status"></span>
+                <div class="flex items-center gap-2" style="margin-inline-start:auto;">
+                    <span class="text-xs text-gray-400">شفافية الطبقة:</span>
+                    <input type="range" id="layer-opacity" min="0" max="100" value="70"
+                        style="width:80px;accent-color:#10b981;" oninput="updateLayerOpacity(this.value/100)">
+                    <span class="text-xs text-gray-300" id="opacity-val">70%</span>
+                </div>
+            </div>
+
+            <!-- MapLibre GL JS 3D Map Container -->
+            <div id="farm-map" style="position:relative;">
+                <!-- Loading Overlay -->
+                <div id="map-loading-overlay" style="position:absolute;inset:0;background:rgba(16,17,26,0.82);z-index:100;
+                    display:flex;align-items:center;justify-content:center;border-radius:14px;pointer-events:none;">
+                    <div style="text-align:center;">
+                        <div style="font-size:2.5rem;animation:spin 1.5s linear infinite;">🛰️</div>
+                        <p style="color:#d1fae5;font-size:13px;margin-top:8px;">جاري تحميل الخريطة&hellip;</p>
+                    </div>
+                </div>
+                <!-- Pixel-Click Popup -->
+                <div id="pixel-popup" style="display:none;position:absolute;top:10px;left:10px;z-index:200;
+                    background:rgba(16,17,26,0.96);border:1px solid rgba(255,255,255,0.15);
+                    border-radius:14px;padding:14px 18px;min-width:220px;font-size:12px;
+                    direction:rtl;backdrop-filter:blur(10px);">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                        <strong style="color:#d1fae5;">📍 تحليل البكسل</strong>
+                        <button onclick="document.getElementById('pixel-popup').style.display='none'"
+                            style="color:#9ca3af;background:none;border:none;cursor:pointer;font-size:16px;">×</button>
+                    </div>
+                    <div id="pixel-popup-content"></div>
+                    <div id="pixel-popup-rec" style="margin-top:8px;padding:6px 10px;border-radius:8px;font-size:11px;">
+                    </div>
+                </div>
+                <!-- 3D Hint -->
+                <div style="position:absolute;bottom:8px;right:8px;z-index:150;
+                    background:rgba(16,17,26,0.75);border:1px solid rgba(255,255,255,0.1);
+                    border-radius:7px;padding:3px 9px;font-size:10px;color:#9ca3af;">
+                    🖱️ Ctrl+زر يمين → 3D
+                </div>
+            </div>
+
+            <!-- MapLibre GL JS + GEE Integration -->
+            <script>
+                (function () {
+                var _GT = JSON.parse('{{ gee_tiles | tojson | default("{}") | safe }}' || '{}');
+                var _LAT = Number('{{ user.lat | default(30.0) }}');
+                var _LON = Number('{{ user.lon | default(31.0) }}');
+                var _GEO = JSON.parse('{{ user.farm_geojson | tojson | default("null") | safe }}' || 'null');
+                var _map = null, _aGEE = 'ndvi', _opacity = 0.70;
+
+                var BM = {
+                    google_sat: 'https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                    google_hybrid: 'https://mt0.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+                    osm: 'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    esri: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                };
+
+                var LM = {
+                    ndvi: { l: '🌿 NDVI', mn: '0', mx: '0.9', c: ['#d73027', '#fee08b', '#1a9850'] },
+                    et: { l: '☁️ ET (mm/d)', mn: '0.5', mx: '10', c: ['#ffffcc', '#41b6c4', '#253494'] },
+                    ndwi: { l: '💧 NDWI', mn: '-0.5', mx: '0.5', c: ['#8B4513', '#87CEEB', '#0000CD'] },
+                    ndsi: { l: '❄️ NDSI', mn: '-0.5', mx: '0.8', c: ['#2d1b69', '#c084fc', '#fff'] },
+                    soil_moisture: { l: '🟤 رطوبة التربة', mn: '-0.3', mx: '0.6', c: ['#8B4513', '#F5DEB3', '#008B8B'] },
+                    biomass: { l: '🌾 كتلة حيوية', mn: '0', mx: '3', c: ['#f7fcb9', '#78c679', '#006837'] },
+                    tvdi: { l: '🏖️ TVDI—جفاف', mn: '0', mx: '1', c: ['#313695', '#fee090', '#a50026'] },
+                    tphc: { l: '⚙️ TPHC', mn: '0', mx: '0.15', c: ['#0f0', '#FF8C00', '#800'] },
+                    wwfi: { l: '💦 WWFI—هدر مائي', mn: '0', mx: '1', c: ['#fff', '#41b6c4', '#081d58'] },
+                    lst_soil: { l: '🌡️ LST-تربة (°C)', mn: '15', mx: '45', c: ['#00F', '#FF0', '#F00'] },
+                    lst_canopy: { l: '🌿 LST-نبات (°C)', mn: '10', mx: '40', c: ['#00F', '#FF0', '#F00'] },
+                };
+
+                function _init() {
+                    if (typeof maplibregl === 'undefined') { setTimeout(_init, 600); return; }
+                    _map = new maplibregl.Map({
+                        container: 'farm-map',
+                        style: {
+                            version: 8, sources: { bm: { type: 'raster', tiles: [BM.google_sat], tileSize: 256 } },
+                            layers: [{ id: 'bm', type: 'raster', source: 'bm' }]
+                        },
+                        center: [_LON || 31, _LAT || 30], zoom: 13, pitch: 0, bearing: 0, maxPitch: 85, antialias: true,
+                    });
+                    _map.addControl(new maplibregl.NavigationControl(), 'top-left');
+                    _map.addControl(new maplibregl.FullscreenControl(), 'top-left');
+                    _map.on('load', function () {
+                        document.getElementById('map-loading-overlay').style.display = 'none';
+                        _flyTo(); _addGEE(); _addBoundary();
+                    });
+                    _map.on('click', _onClick);
+                }
+
+                function _flyTo() {
+                    try {
+                        if (_GEO) {
+                            var geo = JSON.parse(_GEO), pts = [];
+                            (function w(g) {
+                                if (!g) return; if (g.type === 'Point') { pts.push(g.coordinates); }
+                                else if (g.type === 'LineString') g.coordinates.forEach(function (c) { pts.push(c); });
+                                else if (g.type === 'Polygon') g.coordinates.forEach(function (r) { r.forEach(function (c) { pts.push(c); }); });
+                                else if (g.type === 'MultiPolygon') g.coordinates.forEach(function (p) { p.forEach(function (r) { r.forEach(function (c) { pts.push(c); }); }); });
+                                else if (g.type === 'Feature') w(g.geometry);
+                                else if (g.type === 'FeatureCollection') g.features.forEach(w);
+                            })(geo);
+                            if (pts.length) {
+                                var lons = pts.map(function (c) { return c[0]; }), lats = pts.map(function (c) { return c[1]; });
+                                _map.fitBounds([[Math.min.apply(null, lons), Math.min.apply(null, lats)], [Math.max.apply(null, lons), Math.max.apply(null, lats)]],
+                                    { padding: 60, duration: 2000, maxZoom: 16 }); return;
+                            }
+                        }
+                    } catch (e) { }
+                    if (_LAT && _LON) _map.flyTo({ center: [_LON, _LAT], zoom: 14, duration: 1500 });
+                }
+
+                function _addBoundary() {
+                    if (!_GEO) return;
+                    try {
+                        var geo = JSON.parse(_GEO);
+                        if (!_map.getSource('fb')) {
+                            _map.addSource('fb', { type: 'geojson', data: geo });
+                            _map.addLayer({ id: 'fb-fill', type: 'fill', source: 'fb', paint: { 'fill-color': '#10b981', 'fill-opacity': 0.08 } });
+                            _map.addLayer({ id: 'fb-line', type: 'line', source: 'fb', paint: { 'line-color': '#4ade80', 'line-width': 2.5, 'line-dasharray': [4, 2] } });
+                        }
+                    } catch (e) { }
+                }
+
+                function _addGEE() {
+                    Object.keys(LM).forEach(function (ly) {
+                        var url = _GT[ly] || '';
+                        if (!_map.getSource('g-' + ly)) {
+                            _map.addSource('g-' + ly, { type: 'raster', tiles: url ? [url] : ['about:blank'], tileSize: 256 });
+                            _map.addLayer({
+                                id: 'gl-' + ly, type: 'raster', source: 'g-' + ly,
+                                layout: { visibility: ly === 'ndvi' ? 'visible' : 'none' },
+                                paint: { 'raster-opacity': _opacity }
+                            });
+                        }
+                    });
+                    if (_GT.ndvi) _showLeg('ndvi');
+                }
+
+                window.toggleGEELayer = function (ly) {
+                    if (!_map) return;
+                    var lid = 'gl-' + ly;
+                    var vis = _map.getLayoutProperty(lid, 'visibility') === 'visible';
+                    if (vis && _aGEE === ly) {
+                        _map.setLayoutProperty(lid, 'visibility', 'none');
+                        var oBtn = document.querySelector('[data-layer="' + ly + '"]');
+                        if (oBtn) { oBtn.classList.remove('btn-green'); oBtn.classList.add('btn-outline'); }
+                        _aGEE = null; document.getElementById('gee-legend').style.display = 'none';
+                    } else {
+                        if (_aGEE) {
+                            _map.setLayoutProperty('gl-' + _aGEE, 'visibility', 'none');
+                            var pb = document.querySelector('[data-layer="' + _aGEE + '"]');
+                            if (pb) { pb.classList.remove('btn-green'); pb.classList.add('btn-outline'); }
+                        }
+                        _map.setLayoutProperty(lid, 'visibility', 'visible');
+                        var nb = document.querySelector('[data-layer="' + ly + '"]');
+                        if (nb) { nb.classList.remove('btn-outline'); nb.classList.add('btn-green'); }
+                        _aGEE = ly; _showLeg(ly);
+                    }
+                };
+
+                function _showLeg(ly) {
+                    var m = LM[ly]; if (!m) return;
+                    document.getElementById('gee-legend').style.display = 'block';
+                    document.getElementById('gee-legend-label').textContent = m.l;
+                    document.getElementById('gee-legend-min').textContent = m.mn;
+                    document.getElementById('gee-legend-max').textContent = m.mx;
+                    document.getElementById('gee-legend-gradient').style.background = 'linear-gradient(to right,' + m.c.join(',') + ')';
+                }
+
+                window.switchBasemap = function (id) {
+                    if (!_map) return;
+                    if (_map.getSource('bm')) _map.getSource('bm').setTiles([BM[id]]);
+                    document.querySelectorAll('[id^="bm-"]').forEach(function (b) { b.classList.remove('btn-green'); b.classList.add('btn-outline'); });
+                    var ab = document.getElementById('bm-' + id); if (ab) { ab.classList.remove('btn-outline'); ab.classList.add('btn-green'); }
+                };
+
+                window.updateLayerOpacity = function (v) {
+                    _opacity = v; document.getElementById('opacity-val').textContent = Math.round(v * 100) + '%';
+                    if (!_map) return;
+                    Object.keys(LM).forEach(function (ly) { try { _map.setPaintProperty('gl-' + ly, 'raster-opacity', v); } catch (e) { } });
+                };
+
+                function _onClick(e) {
+                    var lng = e.lngLat.lng, lat = e.lngLat.lat;
+                    var pop = document.getElementById('pixel-popup');
+                    var con = document.getElementById('pixel-popup-content');
+                    var rec = document.getElementById('pixel-popup-rec');
+                    pop.style.display = 'block';
+                    con.innerHTML = '<span style="color:#9ca3af">⌛ جاري…</span>'; rec.innerHTML = '';
+                    fetch('/api/get-pixel-data', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ lat: lat, lon: lng })
+                    }).then(function (r) { return r.json(); }).then(function (d) {
+                        if (!d.success) { con.innerHTML = '<span style="color:#f87171">فشل</span>'; return; }
+                        var sc = { healthy: '#10b981', moderate: '#f59e0b', water_stress: '#ef4444', fallow: '#6b7280' }[d.status] || '#9ca3af';
+                        con.innerHTML = '<table style="width:100%;font-size:11px;color:#d1fae5;">'
+                            + '<tr><td>🌿 NDVI</td><td style="color:#4ade80;font-weight:700">' + (d.ndvi != null ? d.ndvi.toFixed(3) : '—') + '</td></tr>'
+                            + '<tr><td>💧 NDWI</td><td style="color:#60a5fa;font-weight:700">' + (d.ndwi != null ? d.ndwi.toFixed(3) : '—') + '</td></tr>'
+                            + '<tr><td>🌡️ LST تربة</td><td style="color:#fcd34d">' + (d.lst_soil || '—') + '°C</td></tr>'
+                            + '<tr><td>🌿 LST نبات</td><td style="color:#86efac">' + (d.lst_canopy || '—') + '°C</td></tr>'
+                            + '<tr><td>☁️ ET</td><td style="color:#93c5fd">' + (d.et != null ? d.et.toFixed(2) : '—') + ' مم/ي</td></tr>'
+                            + '<tr><td>🏖️ TVDI</td><td style="color:#fde68a">' + (d.tvdi != null ? d.tvdi.toFixed(3) : '—') + '</td></tr>'
+                            + '<tr><td>🌾 كتلة</td><td style="color:#a3e635">' + (d.biomass != null ? d.biomass.toFixed(3) : '—') + ' طن/فد</td></tr></table>';
+                        rec.innerHTML = '<span style="color:' + sc + '">' + d.recommendation + '</span>';
+                        rec.style.background = sc + '18'; rec.style.border = '1px solid ' + sc + '40';
+                    }).catch(function () { con.innerHTML = '<span style="color:#f87171">فشل الاتصال</span>'; });
+                }
+
+                window.generateTiles = function () {
+                    var btn = document.getElementById('btn-gen-tiles');
+                    if (btn) { btn.disabled = true; btn.textContent = '⌛ جاري…'; }
+                    fetch('/api/generate-tiles', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+                        .then(function (r) { return r.json(); }).then(function (d) {
+                            if (btn) { btn.disabled = false; btn.textContent = '🔄 تحديث الطبقات'; }
+                            setTimeout(_reload, 90000);
+                            if (d.message) alert(d.message);
+                        }).catch(function () { if (btn) { btn.disabled = false; btn.textContent = '🔄 تحديث الطبقات'; } });
+                };
+
+                function _reload() {
+                    fetch('/api/get-latest-tiles').then(function (r) { return r.json(); }).then(function (d) {
+                        if (!d.tile_urls || !_map) return;
+                        Object.keys(d.tile_urls).forEach(function (ly) {
+                            var u = d.tile_urls[ly]; if (!u) return;
+                            var s = _map.getSource('g-' + ly); if (s) s.setTiles([u]);
+                        });
+                    }).catch(function () { });
+                }
+                setInterval(_reload, 6 * 60 * 60 * 1000);
+
+                if (document.readyState !== 'loading') _init();
+                else document.addEventListener('DOMContentLoaded', _init);
+            }) ();
+            </script>
+
+            <!-- Crop Health badge (preserved for existing JS compatibility) -->
+            <div id="risk-map-health-badge" class="mt-3 flex items-center gap-3 flex-wrap"
+                style="display:none!important;">
+                <span class="text-sm text-gray-400">🌱 صحة المحصول:</span>
+                <span id="risk-map-crop-badge" class="badge badge-healthy">⏳ جاري…</span>
+                <span class="text-xs text-gray-500" id="risk-map-ndvi-val"></span>
+                <span class="text-xs text-gray-500" id="risk-map-et-val"></span>
+                <span class="text-xs text-gray-500" id="risk-map-biomass-val"></span>
+            </div>
+
+            <!-- Dynamic Color Legend -->
+            <div id="gee-legend"
+                style="display:none;margin-top:10px;padding:8px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:11px;color:#9ca3af;font-weight:600;min-width:100px;"
+                        id="gee-legend-label"></span>
+                    <div style="flex:1;height:12px;border-radius:6px;" id="gee-legend-gradient"></div>
+                    <span style="font-size:10px;color:#6b7280;" id="gee-legend-min"></span>
+                    <span style="font-size:10px;color:#6b7280;margin-inline-start:8px;" id="gee-legend-max"></span>
+                </div>
+            </div>
+
+            <!-- Area Display (preserved) -->
+            <div id="map-area-display"
+                style="display:none;margin-top:12px;padding:10px 16px;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);border-radius:12px;font-size:14px;color:#d1fae5;text-align:center;">
+            </div>
+
+            <!-- Per-Zone Health Summary Panel (preserved) -->
+            <div id="zone-metrics-panel"
+                style="margin-top:14px;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;min-height:40px;">
+                <div style="color:#9ca3af;font-size:12px;padding:4px;" data-ar="⏳ جاري تحليل المناطق…"
+                    data-en="⏳ Analysing zones…">⏳ جاري تحليل المناطق…</div>
+            </div>
+        </section>
+
+
+        <!-- ── SECTION: Charts (Enhanced v4) ── -->
+        <section id="section-chart" class="dashboard-section glass p-6">
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    📈 <span>تحليل المحاصيل — السلاسل الزمنية</span>
+                </h3>
+                <button onclick="downloadChart()" class="btn btn-outline text-xs flex items-center gap-1">
+                    📥 تصدير PNG
+                </button>
+            </div>
+
+            <!-- Period Buttons -->
+            <div class="flex gap-2 flex-wrap mb-3 items-center">
+                <span class="text-xs text-gray-400">الفترة:</span>
+                <button id="period-5days" class="chart-ctrl-btn text-xs px-3 py-1 rounded-xl"
+                    onclick="setChartPeriod('5days')">5 أيام</button>
+                <button id="period-10days" class="chart-ctrl-btn text-xs px-3 py-1 rounded-xl"
+                    onclick="setChartPeriod('10days')">10 أيام</button>
+                <button id="period-1month" class="chart-ctrl-btn text-xs px-3 py-1 rounded-xl chart-ctrl-active"
+                    onclick="setChartPeriod('1month')">شهر</button>
+                <button id="period-3months" class="chart-ctrl-btn text-xs px-3 py-1 rounded-xl"
+                    onclick="setChartPeriod('3months')">3 شهور</button>
+            </div>
+
+            <!-- Parameter Buttons -->
+            <div class="flex gap-2 flex-wrap mb-3 items-center">
+                <span class="text-xs text-gray-400">المؤشر:</span>
+                <button id="param-ndvi" class="chart-ctrl-btn text-xs px-3 py-1 rounded-xl chart-ctrl-active"
+                    onclick="setChartParam('ndvi')">🌿 NDVI</button>
+                <button id="param-et" class="chart-ctrl-btn text-xs px-3 py-1 rounded-xl"
+                    onclick="setChartParam('et')">☁️ ET</button>
+                <button id="param-biomass" class="chart-ctrl-btn text-xs px-3 py-1 rounded-xl"
+                    onclick="setChartParam('biomass')">🌾 كتلة</button>
+                <button id="param-wue" class="chart-ctrl-btn text-xs px-3 py-1 rounded-xl"
+                    onclick="setChartParam('wue')">💧 WUE</button>
+                <button id="param-tvdi" class="chart-ctrl-btn text-xs px-3 py-1 rounded-xl"
+                    onclick="setChartParam('tvdi')">🏖️ TVDI</button>
+            </div>
+
+            <!-- Area Selector -->
+            <div class="flex items-center gap-2 mb-4">
+                <span class="text-xs text-gray-400">المنطقة:</span>
+                <select id="area-select" onchange="loadChart()" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:8px;
+                    padding:4px 10px;font-size:12px;color:#d1fae5;font-family:'Cairo',sans-serif;">
+                    <option value="all">كل المزرعة (متوسط عام)</option>
+                    <optgroup label="🔄 البيفوتات">
+                        <option value="pivot_P01">Pivot P01</option>
+                        <option value="pivot_P12">Pivot P12</option>
+                    </optgroup>
+                    <optgroup label="📐 الأحواض">
+                        <option value="plot_1">Plot 1</option>
+                        <option value="plot_2">Plot 2</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <!-- Chart Canvas -->
+            <div style="position:relative;height:300px;background:rgba(0,0,0,0.2);border-radius:12px;padding:10px;">
+                <div id="chart-loading"
+                    style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:10;border-radius:12px;background:rgba(16,17,26,0.7);">
+                    <span style="color:#4ade80;font-size:13px;">⏳ جاري التحميل…</span>
+                </div>
+                <canvas id="main-chart"></canvas>
+            </div>
+
+            <!-- Status Panel -->
+            <div id="chart-status-panel" class="mt-3"></div>
+
+            <!-- Unit Conversion Panel (shown only for Biomass) -->
+            <div id="unit-conversion-panel" class="mt-3" style="display:none;"></div>
+
+            <!-- TVDI Explanation Panel (shown only for TVDI) -->
+            <div id="tvdi-explanation-panel" class="mt-3" style="display:none;"></div>
+
+            <!-- Legend Row -->
+            <div class="flex gap-4 mt-4 text-xs text-gray-500 flex-wrap">
+                <span class="flex items-center gap-1"><span
+                        style="width:10px;height:10px;border-radius:50%;background:#10b981;display:inline-block;"></span>
+                    ممتاز</span>
+                <span class="flex items-center gap-1"><span
+                        style="width:10px;height:10px;border-radius:50%;background:#fbbf24;display:inline-block;"></span>
+                    متوسط</span>
+                <span class="flex items-center gap-1"><span
+                        style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;"></span>
+                    ضعيف</span>
+                <span class="text-gray-600 mr-auto" id="chart-data-source-note"></span>
+            </div>
+        </section>
+
+
+        <!-- ── SECTION: Digital Twin (النسخة الرقمية للمزرعة) ── -->
+        <section id="section-digital-twin" class="dashboard-section glass p-6">
+            <h3 class="text-lg font-bold text-white mb-1 flex items-center gap-2">
+                🤖 النسخة الرقمية للمزرعة
+            </h3>
+            <p class="text-xs text-gray-500 mb-5">
+                محاكاة "ماذا لو؟" — استكشف تأثير قرارات الري قبل تنفيذها فعلياً.
+            </p>
+
+            class="chart-ctrl-btn px-3 py-1 rounded-lg text-xs font-semibold">WUE</button>
+            <button id="btn-metric-lst_soil" onclick="setChartMetric('lst_soil')"
+                class="chart-ctrl-btn px-3 py-1 rounded-lg text-xs font-semibold" data-ar="التربة"
+                data-en="Soil (LST)">التربة</button>
+            <button id="btn-metric-lst_canopy" onclick="setChartMetric('lst_canopy')"
+                class="chart-ctrl-btn px-3 py-1 rounded-lg text-xs font-semibold" data-ar="النبات"
+                data-en="Canopy (LST)">النبات</button>
+            </div>
+            </div>
+
+            <!-- Per-crop chart panels — rendered by JS -->
+            <div id="per-crop-charts-container" class="flex flex-col gap-6">
+                <p class="text-gray-500 text-sm py-6 text-center" data-ar="⏳ جاري تحميل البيانات…"
+                    data-en="⏳ Loading data...">
+                    ⏳ جاري تحميل البيانات…
+                </p>
+            </div>
+
+            <!-- Global colour legend -->
+            <div class="flex gap-5 mt-5 text-xs text-gray-400 flex-wrap">
+                <span class="flex items-center gap-1">
+                    <span class="w-3 h-3 rounded-full bg-green-500 inline-block"></span>
+                    <span data-ar="ممتاز / عالي" data-en="Excellent / High">ممتاز / عالي</span>
+                </span>
+                <span class="flex items-center gap-1">
+                    <span class="w-3 h-3 rounded-full bg-yellow-500 inline-block"></span>
+                    <span data-ar="متوسط" data-en="Moderate">متوسط</span>
+                </span>
+                <span class="flex items-center gap-1">
+                    <span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+                    <span data-ar="ضعيف / منخفض" data-en="Poor / Low">ضعيف / منخفض</span>
+                </span>
+                <span class="flex items-center gap-1 mr-4 text-gray-600" id="chart-data-source-note"></span>
+            </div>
+        </section>
+
+
+        <div class="h-20"></div>
+    </main>
+
+    <!-- ── CHATBOT ── -->
+    <button id="chatbot-fab" onclick="toggleChatbot()" title="Agri AI Chat">🤖</button>
+
+    <div id="chatbot-window">
+        <div
+            class="flex items-center gap-3 p-4 border-b border-white/10 bg-gradient-to-r from-green-900/50 to-transparent rounded-t-2xl">
+            <div
+                class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-800 flex items-center justify-center text-xl flex-shrink-0">
+                🤖
+            </div>
+            <div class="flex-1">
+                <h3 class="font-bold text-white" data-ar="المساعد الذكي للمزرعة" data-en="Farm Smart Assistant">المساعد
+                    الذكي للمزرعة</h3>
+                <p class="text-xs text-green-400" data-ar="متصل الآن" data-en="Online">متصل الآن</p>
+            </div>
+            <div class="flex-1">
+                <p class="font-bold text-white text-sm">مساعد تيسير</p>
+                <p class="text-xs text-green-400">متصل الآن · يتحدث بالعربي</p>
+            </div>
+            <button onclick="toggleChatbot()" class="text-gray-400 hover:text-white text-xl leading-none">✕</button>
+        </div>
+
+        <div id="chat-messages">
+            <div class="chat-bubble bubble-bot"
+                data-ar="أهلاً يا حاج! 🌾<br/>أنا مساعدك الزراعي الذكي. اسألني عن حالة أرضك، الرطوبة، أو أوامر الري."
+                data-en="Hello! 🌾<br/>I am your smart agricultural assistant. Ask me about your land's health, moisture, or irrigation orders.">
+                أهلاً يا حاج! 🌾<br />أنا مساعدك الزراعي الذكي. اسألني عن حالة أرضك، الرطوبة، أو أوامر الري.
+            </div>
+        </div>
+
+        <div class="flex gap-2 px-4 py-2 overflow-x-auto border-t border-white/5">
+            <button class="quick-reply" onclick="sendQuick('هل أروي النهارده؟')" data-ar="💧 ري؟"
+                data-en="💧 Irrigate?">💧 ري؟</button>
+            <button class="quick-reply" onclick="sendQuick('إيه حالة المحصول؟')" data-ar="🌿 المحصول"
+                data-en="🌿 Crop status">🌿 المحصول</button>
+            <button class="quick-reply" onclick="sendQuick('توقعات الطقس')" data-ar="🌤️ طقس" data-en="🌤️ Weather">🌤️
+                طقس</button>
+            <button class="quick-reply" onclick="sendQuick('في عطل في البيفوت؟')" data-ar="🔧 بيفوت"
+                data-en="🔧 Pivot">🔧 بيفوت</button>
+            <button class="quick-reply" onclick="sendQuick('إيه كمية الكتلة الحيوية؟')" data-ar="🌾 الكتلة"
+                data-en="🌾 Biomass">🌾 الكتلة</button>
+            <button class="quick-reply" onclick="sendQuick('كفاءة المياه')" data-ar="💧 كفاءة مياه" data-en="💧 WUE">💧
+                كفاءة مياه</button>
+        </div>
+
+        <div class="flex items-center gap-2 p-3 border-t border-white/10">
+            <!-- Used generic placeholder handled by JS instead of hardcoded attribute to ensure it swaps -->
+            <input id="chat-input" type="text" placeholder="اكتب سؤالك هنا…"
+                class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm text-white outline-none placeholder-gray-500 focus:border-green-500/50"
+                onkeydown="if(event.key==='Enter')sendChat()" />
+            <button onclick="sendChat()"
+                class="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-800 rounded-full flex items-center justify-center text-lg hover:scale-105 transition border-none cursor-pointer">➤</button>
+        </div>
+    </div>
+
+    <script>
+        // ── Bilingual Toggle ──────────────────────────────────────
+        let _lang = localStorage.getItem('tayseer_lang') || 'ar';
+
+        function applyLanguage(lang) {
+            _lang = lang;
+            localStorage.setItem('tayseer_lang', lang);
+            const isAr = lang === 'ar';
+            document.querySelectorAll('[data-ar][data-en]').forEach(el => {
+                el.textContent = isAr ? el.dataset.ar : el.dataset.en;
+            });
+            document.querySelector('html').setAttribute('lang', isAr ? 'ar' : 'en');
+            document.querySelector('html').setAttribute('dir', isAr ? 'rtl' : 'ltr');
+            const btn = document.getElementById('lang-btn');
+            if (btn) btn.textContent = isAr ? '🌐 English' : '🌐 عربي';
+        }
+
+        function toggleLanguage() {
+            applyLanguage(_lang === 'ar' ? 'en' : 'ar');
+        }
+
+        // Apply saved language on load
+        document.addEventListener('DOMContentLoaded', () => applyLanguage(_lang));
+
+        // ── Farm Name Edit (uses /api/edit-farm-name for audit trail) ──────────
+        function editFarmName() {
+            const currentName = document.getElementById('header-farm-span').textContent.trim()
+                || document.getElementById('header-farm-name').textContent.trim()
+                || window.USER_NAME;
+
+            const newName = prompt(
+                'أدخل اسم مزرعتك الجديد:\n(سيحتاج تغيير اسم المزرعة لموافقة المشرف قبل تطبيقه)',
+                currentName
+            );
+
+            if (!newName || newName.trim() === '' || newName.trim() === currentName) return;
+
+            fetch('/api/edit-farm-name', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ farm_name: newName.trim() })
+            })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message || 'تم إرسال الطلب بنجاح ✅');
+                        location.reload();
+                    } else {
+                        alert(data.message || 'حدث خطأ غير متوقع.');
+                    }
+                })
+                .catch(() => alert('خطأ في الاتصال بالخادم.'));
+        }
+    </script>
+
+    <!-- External JS -->
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(reg => console.log('SW registered!', reg.scope))
+                    .catch(err => console.log('SW registration failed: ', err));
+            });
+        }
+    </script>
+</body>
+
+</html>

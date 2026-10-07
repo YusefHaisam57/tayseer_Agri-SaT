@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎨 إعداد المزرعة — رسم الأراضي | Tayseer Agri-SaT</title>
+  <meta name="description" content="أداة رسم تفاعلية ثلاثية الأبعاد لتحديد قطع الأراضي وتسميتها">
+
+  <!-- MapLibre GL JS — True 3D map with pitch/bearing/rotate -->
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet">
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+
+  <!-- MapboxGL Draw (works with MapLibre) -->
+  <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.css">
+  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-draw/v1.4.3/mapbox-gl-draw.js"></script>
+
+  <!-- Draw Circle Mode for MapboxDraw -->
+  <script src="https://cdn.jsdelivr.net/npm/@mapbox-gl-draw-circle@1.1.2/dist/drawCircleMode.js"></script>
+
+  <!-- Turf.js for area calculations -->
+  <script src="https://unpkg.com/@turf/turf@6.5.0/turf.min.js"></script>
+
+  <!-- Google Fonts: Cairo -->
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ── Reset ──────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green:    #10b981;
+      --green-dk: #059669;
+      --green-lt: #d1fae5;
+      --blue:     #3b82f6;
+      --amber:    #f59e0b;
+      --red:      #ef4444;
+      --bg:       #0c131f;
+      --surface:  #13202f;
+      --card:     #1a2d3f;
+      --border:   rgba(255,255,255,0.08);
+      --txt:      #e2e8f0;
+      --txt-mute: #94a3b8;
+      --sidebar-w: 360px;
+      --radius:   10px;
+    }
+
+    body {
+      font-family: 'Cairo', sans-serif;
+      direction: rtl;
+      background: var(--bg);
+      color: var(--txt);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+    }
+
+    /* ── Sidebar ─────────────────────────────────────────────── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      flex-shrink: 0;
+      overflow: hidden;
+      position: relative;
+      z-index: 10;
+    }
+
+    .sidebar-top {
+      background: linear-gradient(135deg, #065f46 0%, #047857 50%, #10b981 100%);
+      padding: 18px 20px 14px;
+      flex-shrink: 0;
+    }
+
+    .sidebar-top h1 {
+      font-size: 17px;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sidebar-top p {
+      font-size: 12px;
+      color: rgba(255,255,255,0.8);
+      margin-top: 3px;
+    }
+
+    .sidebar-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    /* ── Stats Bar ───────────────────────────────────────────── */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .stat-tile {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      text-align: center;
+    }
+
+    .stat-tile .s-val {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--green);
+      line-height: 1.1;
+    }
+
+    .stat-tile .s-lbl {
+      font-size: 10px;
+      color: var(--txt-mute);
+      margin-top: 2px;
+    }
+
+    .stats-bar-wide {
+      display: grid;
+      grid-template-columns: repeat(5,1fr);
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+
+    .stats-bar-wide .stat-tile .s-val { font-size: 16px; }
+
+    /* ── Section Label ───────────────────────────────────────── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--txt-mute);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      margin: 14px 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Tool Buttons ────────────────────────────────────────── */
+    .tools-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .tool-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      padding: 12px 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      color: var(--txt);
+      font-family: 'Cairo', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all .18s;
+      white-space: nowrap;
+    }
+
+    .tool-btn .tool-icon { font-size: 22px; }
+
+    .tool-btn:hover {
+      border-color: var(--green);
+      background: rgba(16,185,129,.1);
+      color: var(--green);
+    }
+
+    .tool-btn.active {
+      background: rgba(16,185,129,.18);
+      border-color: var(--green);
+      color: var(--green);
+      box-shadow: 0 0 0 2px rgba(16,185,129,.25);
+    }
+
+    .tool-btn-wide {
+      width: 100%;
+      flex-direction: row;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    /* ── Hint Panel ──────────────────────────────────────────── */
+    #hint-panel {
+      background: rgba(16,185,129,.08);
+      border: 1px dashed var(--green);
+      border-radius: var(--radius);
+      padding: 14px;
+      text-align: center;
+      margin: 8px 0;
+    }
+
+    #hint-panel p { font-size: 13px; color: var(--green); font-weight: 600; }
+    #hint-panel small { color: var(--txt-mute); font-size: 11px; }
+
+    /* ── Form Fields ─────────────────────────────────────────── */
+    .fg { margin-bottom: 12px; }
+
+    .fg label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--txt-mute);
+      margin-bottom: 5px;
+    }
+
+    .fg input,
+    .fg select,
+    .fg textarea {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 9px 12px;
+      color: var(--txt);
+      font-family: 'Cairo', sans-serif;
+      font-size: 13px;
+      transition: border-color .18s;
+    }
+
+    .fg input:focus,
+    .fg select:focus,
+    .fg textarea:focus {
+      outline: none;
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(16,185,129,.15);
+    }
+
+    .fg select option { background: var(--surface); }
+
+    .fg textarea { resize: vertical; min-height: 64px; }
+
+    /* Area Display */
+    .area-display {
+      display: grid;
+      grid-template-columns: repeat(4,1fr);
+      gap: 6px;
+      margin: 10px 0;
+    }
+
+    .area-tile {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      text-align: center;
+      padding: 8px 4px;
+    }
+
+    .area-tile .a-val { font-size: 15px; font-weight: 800; color: var(--green); }
+    .area-tile .a-unit { font-size: 9px; color: var(--txt-mute); }
+
+    /* Buttons */
+    .btn-primary {
+      width: 100%;
+      padding: 11px;
+      background: var(--green);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      font-family: 'Cairo', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .18s;
+      margin-top: 8px;
+    }
+
+    .btn-primary:hover { background: var(--green-dk); }
+    .btn-primary:disabled { background: #374151; cursor: not-allowed; }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 10px;
+      background: transparent;
+      color: var(--txt-mute);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-family: 'Cairo', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: all .18s;
+    }
+
+    .btn-secondary:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── Plot Cards ──────────────────────────────────────────── */
+    #plots-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .plot-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 11px 13px;
+      cursor: pointer;
+      transition: all .18s;
+    }
+
+    .plot-card:hover {
+      border-color: rgba(255,255,255,.18);
+      background: rgba(255,255,255,.04);
+    }
+
+    .plot-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+
+    .plot-card-name { font-weight: 700; font-size: 14px; }
+
+    .plot-badge {
+      padding: 2px 9px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-pivot { background: rgba(59,130,246,.2); color: #93c5fd; }
+    .badge-plot  { background: rgba(245,158,11,.2); color: #fcd34d; }
+
+    .plot-card-info { font-size: 12px; color: var(--txt-mute); margin-bottom: 6px; }
+
+    .plot-card-actions { display: flex; gap: 6px; }
+
+    .act-btn {
+      padding: 4px 10px;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--txt-mute);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+
+    .act-btn:hover { background: rgba(255,255,255,.08); color: var(--txt); }
+    .act-edit:hover { border-color: var(--blue); color: var(--blue); }
+    .act-del:hover  { border-color: var(--red);  color: var(--red); }
+    .act-zoom:hover { border-color: var(--green); color: var(--green); }
+
+    .empty-state {
+      text-align: center;
+      color: var(--txt-mute);
+      font-size: 13px;
+      padding: 24px;
+      background: var(--card);
+      border: 1px dashed var(--border);
+      border-radius: var(--radius);
+    }
+
+    /* ── Map ─────────────────────────────────────────────────── */
+    .map-wrap {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+
+    #map {
+      position: absolute;
+      inset: 0;
+    }
+
+    /* ── Floating Controls ───────────────────────────────────── */
+    .float-panel {
+      position: absolute;
+      z-index: 100;
+      background: rgba(13,20,31,.88);
+      backdrop-filter: blur(14px);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      color: var(--txt);
+      font-family: 'Cairo', sans-serif;
+    }
+
+    /* View Controls — top left */
+    .view-ctrl-panel {
+      top: 16px;
+      left: 16px;
+      width: 170px;
+    }
+
+    .view-ctrl-panel h4 {
+      font-size: 11px;
+      color: var(--txt-mute);
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .view-ctrl-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px;
+    }
+
+    .vc-btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 7px 4px;
+      color: var(--txt);
+      font-family: 'Cairo', sans-serif;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all .15s;
+    }
+
+    .vc-btn:hover { border-color: var(--green); color: var(--green); }
+    .vc-btn.active { background: rgba(16,185,129,.2); border-color: var(--green); color: var(--green); }
+    .vc-btn-full { grid-column: span 2; }
+
+    .style-btn { /* basemap buttons */ }
+
+    .separator { border-top: 1px solid var(--border); margin: 8px 0; }
+
+    /* Search bar — top right (inside map area) */
+    .search-wrap {
+      top: 16px;
+      right: 16px;
+      padding: 8px 10px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      width: 260px;
+    }
+
+    .search-wrap input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--txt);
+      font-family: 'Cairo', sans-serif;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .search-wrap input::placeholder { color: var(--txt-mute); }
+
+    #btn-search {
+      background: var(--green);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      padding: 5px 10px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    /* Compass indicator */
+    .compass {
+      position: absolute;
+      bottom: 50px;
+      left: 60px;
+      z-index: 100;
+      width: 40px;
+      height: 40px;
+      background: rgba(13,20,31,.8);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    /* Map popup override */
+    .farm-popup .maplibregl-popup-content {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      color: var(--txt);
+      font-family: 'Cairo', sans-serif;
+      box-shadow: 0 8px 24px rgba(0,0,0,.4);
+    }
+
+    .farm-popup .maplibregl-popup-tip {
+      border-top-color: var(--surface);
+    }
+
+    .map-popup .popup-row { font-size: 12px; color: var(--txt-mute); margin: 3px 0; }
+    .map-popup .popup-key { font-weight: 600; color: var(--txt); }
+    .map-popup .popup-actions { display: flex; gap: 6px; margin-top: 10px; }
+    .popup-btn {
+      padding: 5px 12px; border-radius: 6px; border: none; cursor: pointer;
+      font-family: 'Cairo', sans-serif; font-size: 12px; font-weight: 600;
+    }
+
+    .popup-btn-edit { background: var(--blue); color: #fff; }
+    .popup-btn-del  { background: var(--red);  color: #fff; }
+
+    /* Type badge inside form header */
+    .form-type-badge {
+      display: inline-block;
+      background: rgba(16,185,129,.15);
+      border: 1px solid rgba(16,185,129,.4);
+      color: var(--green);
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    /* Sidebar footer */
+    .sidebar-footer {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+      display: flex;
+      gap: 8px;
+    }
+
+    .footer-btn {
+      flex: 1;
+      padding: 8px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--txt-mute);
+      font-family: 'Cairo', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all .15s;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .footer-btn:hover { background: rgba(255,255,255,.06); color: var(--txt); }
+
+    /* ── Responsive ──────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .sidebar { width: 100vw; height: 45vh; position: absolute; bottom: 0; z-index: 100; }
+      .map-wrap { height: 55vh; }
+      .view-ctrl-panel { display: none; }
+      body { flex-direction: column; }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+
+<body>
+  <!-- ══════════════════════════ SIDEBAR ══════════════════════════ -->
+  <aside class="sidebar">
+
+    <!-- Header -->
+    <div class="sidebar-top">
+      <h1>🎨 رسم وتحديد الأراضي</h1>
+      <p>ارسم أراضيك بدقة — بيفوتات وأحواض زراعية</p>
+    </div>
+
+    <!-- Scrollable Body -->
+    <div class="sidebar-body">
+
+      <!-- Stats banner -->
+      <div class="stats-bar-wide">
+        <div class="stat-tile">
+          <div class="s-val" id="stat-total-plots">0</div>
+          <div class="s-lbl">قطع</div>
+        </div>
+        <div class="stat-tile">
+          <div class="s-val" id="stat-pivots">0</div>
+          <div class="s-lbl">بيفوت</div>
+        </div>
+        <div class="stat-tile">
+          <div class="s-val" id="stat-plots">0</div>
+          <div class="s-lbl">حوض</div>
+        </div>
+        <div class="stat-tile">
+          <div class="s-val" id="stat-total-fed">0</div>
+          <div class="s-lbl">فدان</div>
+        </div>
+        <div class="stat-tile">
+          <div class="s-val" id="stat-total-ha">0</div>
+          <div class="s-lbl">هكتار</div>
+        </div>
+      </div>
+
+      <!-- ── Drawing Tools Section ── -->
+      <div class="section-label">🛠️ أدوات الرسم</div>
+
+      <div class="tools-grid">
+        <button id="btn-draw-pivot" class="tool-btn" onclick="startDrawing('pivot')">
+          <span class="tool-icon">🔄</span>
+          <span>بيفوت دائري</span>
+          <small style="color:var(--txt-mute);font-size:10px">الري المحوري</small>
+        </button>
+        <button id="btn-draw-plot" class="tool-btn" onclick="startDrawing('plot')">
+          <span class="tool-icon">📐</span>
+          <span>حوض مضلع</span>
+          <small style="color:var(--txt-mute);font-size:10px">تنقيط / غمر</small>
+        </button>
+        <button class="tool-btn tool-btn-wide" onclick="importGeoJSON()" style="grid-column:span 1">
+          <span class="tool-icon">📁</span>
+          <span>استيراد GeoJSON</span>
+        </button>
+        <button class="tool-btn" onclick="exportGeoJSON()">
+          <span class="tool-icon">📤</span>
+          <span>تصدير</span>
+        </button>
+      </div>
+
+      <!-- ── Drawing Hint Panel ── -->
+      <div id="hint-panel" style="display:none">
+        <p id="hint-type">ارسم على الخريطة</p>
+        <small>انقر مرتين أو اضغط Enter للإنهاء &nbsp;|&nbsp; Esc للإلغاء</small>
+      </div>
+
+      <!-- ── Plot Form Panel ── -->
+      <div id="form-panel" style="display:none">
+        <div class="section-label">📝 بيانات القطعة</div>
+
+        <div class="form-type-badge" id="plot-type-display">📐 حوض</div>
+
+        <!-- Area readout -->
+        <div class="area-display">
+          <div class="area-tile">
+            <div class="a-val" id="area-m2">0</div>
+            <div class="a-unit">م²</div>
+          </div>
+          <div class="area-tile">
+            <div class="a-val" id="area-feddan">0</div>
+            <div class="a-unit">فدان</div>
+          </div>
+          <div class="area-tile">
+            <div class="a-val" id="area-hectare">0</div>
+            <div class="a-unit">هكتار</div>
+          </div>
+          <div class="area-tile">
+            <div class="a-val" id="area-qirat">0</div>
+            <div class="a-unit">قيراط</div>
+          </div>
+        </div>
+
+        <!-- Form fields -->
+        <div class="fg">
+          <label>اسم القطعة *</label>
+          <input type="text" id="plot-name"
+            placeholder="مثال: Plot 1  |  P12  |  P-A97  |  Pivot R3">
+        </div>
+
+        <div class="fg">
+          <label>نوع المحصول *</label>
+          <select id="crop-type">
+            <option value="">-- اختر المحصول --</option>
+          </select>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div class="fg">
+            <label>القطاع</label>
+            <input type="text" id="sector" placeholder="مثال: قطاع A">
+          </div>
+          <div class="fg">
+            <label>المنطقة</label>
+            <input type="text" id="region" placeholder="مثال: منطقة 1">
+          </div>
+        </div>
+
+        <div class="fg">
+          <label>نوع التربة</label>
+          <select id="soil-type">
+            <option value="">-- اختر --</option>
+            <option>رملية</option>
+            <option>طينية</option>
+            <option>طينية رملية</option>
+            <option>صفراء طينية</option>
+            <option>سوداء خصبة</option>
+          </select>
+        </div>
+
+        <div class="fg">
+          <label>تاريخ الزراعة</label>
+          <input type="date" id="planting-date">
+        </div>
+
+        <div class="fg">
+          <label>ملاحظات</label>
+          <textarea id="plot-notes" rows="2" placeholder="أي ملاحظات إضافية…"></textarea>
+        </div>
+
+        <button class="btn-primary" onclick="savePlot()">💾 حفظ القطعة</button>
+        <button class="btn-secondary" onclick="cancelDrawing()">❌ إلغاء الرسم</button>
+      </div>
+
+      <!-- ── Plots List Panel ── -->
+      <div id="list-panel">
+        <div class="section-label">
+          📋 القطع المرسومة
+          <span id="plots-count"
+            style="background:var(--green);color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;margin-inline-end:auto">0</span>
+        </div>
+
+        <div id="plots-list">
+          <div class="empty-state">
+            📋 لا توجد قطع مرسومة بعد<br>
+            <small style="color:var(--txt-mute)">اختر أداة رسم من الأعلى للبدء</small>
+          </div>
+        </div>
+
+        <!-- Finish button -->
+        <button id="btn-finish" class="btn-primary"
+          style="margin-top:16px;background:linear-gradient(135deg,#059669,#10b981)"
+          onclick="finishSetup()">
+          ✅ إنهاء والذهاب للوحة التحكم
+        </button>
+
+        <button class="btn-secondary" onclick="clearDraft()" style="margin-top:6px">
+          🗑️ مسح الكل وإعادة البدء
+        </button>
+      </div>
+    </div><!-- /sidebar-body -->
+
+    <!-- Footer -->
+    <div class="sidebar-footer">
+      <a href="/dashboard" class="footer-btn">🏠 الرئيسية</a>
+      <a href="/risks" class="footer-btn">🚨 المخاطر</a>
+      <a href="/map-view" class="footer-btn">🗺️ الخريطة</a>
+      <button class="footer-btn" onclick="exportGeoJSON()">📤 تصدير</button>
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════ MAP AREA ══════════════════════════ -->
+  <div class="map-wrap">
+
+    <!-- Map canvas -->
+    <div id="map"></div>
+
+    <!-- Location Search (floating top-right) -->
+    <div class="float-panel search-wrap">
+      <input type="text" id="location-search"
+        placeholder="🔍 ابحث عن موقع أو مدينة…"
+        onkeypress="handleSearch(event)">
+      <button id="btn-search" onclick="handleSearch({key:'Enter'})">🔍</button>
+    </div>
+
+    <!-- View Controls (floating top-left below nav) -->
+    <div class="float-panel view-ctrl-panel" style="top:120px">
+      <h4>العرض والزاوية</h4>
+
+      <!-- Basemap switcher -->
+      <div class="view-ctrl-grid" style="margin-bottom:8px">
+        <button id="btn-style-satellite" class="vc-btn style-btn active"
+          onclick="setMapStyle('satellite')">🛰️ جوي</button>
+        <button id="btn-style-hybrid" class="vc-btn style-btn"
+          onclick="setMapStyle('hybrid')">🗺️ هجين</button>
+        <button id="btn-style-osm" class="vc-btn style-btn vc-btn-full"
+          onclick="setMapStyle('osm')">🌍 خريطة عادية</button>
+      </div>
+
+      <div class="separator"></div>
+
+      <!-- 3D toggle -->
+      <button id="btn-3d-toggle" class="vc-btn vc-btn-full" onclick="toggle3D()"
+        style="margin-bottom:6px">🏔️ تفعيل 3D</button>
+
+      <!-- Bearing rotation -->
+      <div class="view-ctrl-grid">
+        <button class="vc-btn" onclick="rotateBearing(-45)" title="دوران يسار 45°">↺ يسار</button>
+        <button class="vc-btn" onclick="rotateBearing(45)"  title="دوران يمين 45°">↻ يمين</button>
+        <button class="vc-btn" onclick="adjustPitch(-15)"   title="إمالة للأمام">▲ إمالة</button>
+        <button class="vc-btn" onclick="adjustPitch(15)"    title="إمالة للخلف">▼ إمالة</button>
+        <button class="vc-btn vc-btn-full" onclick="resetMapView()">🔄 إعادة ضبط</button>
+      </div>
+    </div>
+
+    <!-- Compass rose (purely decorative with bearing value) -->
+    <div class="compass">🧭</div>
+
+  </div>
+
+  <!-- Hidden file input for GeoJSON import -->
+  <input type="file" id="file-input" accept=".geojson,.json"
+    style="display:none" onchange="handleFileImport(event)">
+
+  <!-- ── JS ─────────────────────────────────────────────────── -->
+  <!-- Inject backend data -->
+  <script>
+    window.FARM_LAT  = {{ user.lat  | default(0) | float }};
+    window.FARM_LON  = {{ user.lon  | default(0) | float }};
+    window.FARM_NAME = "{{ user.farm_name | default('') | safe }}";
+  </script>
+
+  <script src="{{ url_for('static', filename='js/farm-drawing.js') }}"></script>
+
+  <script>
+    // Boot the map after DOM + libraries load
+    window.addEventListener('load', function() {
+      if (typeof maplibregl !== 'undefined' && typeof MapboxDraw !== 'undefined' && typeof turf !== 'undefined') {
+        initMap();
+      } else {
+        var tries = 0;
+        var iv = setInterval(function() {
+          tries++;
+          if (typeof maplibregl !== 'undefined' && typeof MapboxDraw !== 'undefined' && typeof turf !== 'undefined') {
+            clearInterval(iv);
+            initMap();
+          } else if (tries > 30) {
+            clearInterval(iv);
+            document.getElementById('map').innerHTML =
+              '<div style="color:#ef4444;padding:40px;text-align:center;font-family:Cairo,sans-serif;">' +
+              '❌ فشل تحميل مكتبات الخريطة — تأكد من الاتصال بالإنترنت وأعد تحميل الصفحة.</div>';
+          }
+        }, 300);
+      }
+    });
+  </script>
+</body>
+</html>

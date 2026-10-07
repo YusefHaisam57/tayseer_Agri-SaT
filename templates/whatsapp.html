@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp — Tayseer Agri-SaT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Cairo', sans-serif; }
+        body { background: #0f172a; color: #e5e7eb; }
+        .glass { background: rgba(15,23,42,0.85); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(12px); }
+        .gradient-header { background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%); }
+        .wa-bubble-in  { background: #25d366; color: #fff; border-radius: 18px 18px 4px 18px; }
+        .wa-bubble-out { background: rgba(255,255,255,0.08); color: #e5e7eb; border-radius: 18px 18px 18px 4px; }
+        .step-circle { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
+        .badge-ok   { background:rgba(16,185,129,.2); color:#34d399; border:1px solid rgba(52,211,153,.3); }
+        .badge-pend { background:rgba(245,158,11,.2); color:#fbbf24; border:1px solid rgba(251,191,36,.3); }
+        .badge-off  { background:rgba(107,114,128,.2); color:#9ca3af; border:1px solid rgba(156,163,175,.3); }
+        input, select { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); color: #e5e7eb; }
+        input:focus, select:focus { outline:none; border-color:#25d366; }
+        .btn-wa { background:#25d366; color:#fff; font-weight:700; transition: all .2s; }
+        .btn-wa:hover { background:#128c7e; }
+        .btn-sec { background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12); color:#e5e7eb; transition:all .2s; }
+        .btn-sec:hover { background:rgba(255,255,255,0.12); }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    {% include 'sidebar.html' ignore missing %}
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col h-screen overflow-y-auto">
+
+        <!-- Header -->
+        <header class="gradient-header text-white shadow-xl shrink-0 px-6 py-4 flex items-center justify-between">
+            <div>
+                <h1 class="text-xl font-bold">📱 مساعد تيسير على واتساب</h1>
+                <p class="text-xs text-emerald-300 mt-0.5">تواصل مباشر مع نظام المنصة عبر WhatsApp Business</p>
+            </div>
+            <span id="wa-badge" class="text-xs px-3 py-1 rounded-full badge-off">⏳ جاري التحقق…</span>
+        </header>
+
+        <div class="flex-1 p-6 space-y-6 overflow-y-auto">
+
+            <!-- ════════════════════════════════ SETUP CARD ════════════════════════════════ -->
+            <div class="glass rounded-2xl p-6">
+                <div class="flex items-center gap-4 mb-6">
+                    <!-- WhatsApp logo -->
+                    <div class="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style="background:#25d366">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" class="w-8 h-8">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                            <path d="M12 0C5.373 0 0 5.373 0 12c0 2.115.553 4.1 1.523 5.82L.057 23.387a.75.75 0 00.956.956l5.567-1.466A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.97 0-3.81-.538-5.387-1.473l-.387-.232-4.004 1.054 1.054-3.944-.246-.396A9.957 9.957 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold">اربط حسابك بالواتساب</h2>
+                        <p class="text-sm text-gray-400">احصل على تحديثات المزرعة وتنبيهات فورية على هاتفك</p>
+                    </div>
+                </div>
+
+                <!-- Phone input -->
+                <div class="mb-6">
+                    <label class="text-sm text-gray-400 mb-2 block">رقم الواتساب (E.164)</label>
+                    <div class="flex gap-2">
+                        <input type="tel" id="phone-input" placeholder="+201234567890"
+                               class="flex-1 px-4 py-2 rounded-xl text-sm"/>
+                        <button onclick="savePhone()" class="btn-wa px-5 py-2 rounded-xl text-sm">حفظ</button>
+                    </div>
+                    <p class="text-xs text-gray-600 mt-1">مثال: +201001234567 (ابدأ بـ + ورمز الدولة)</p>
+                </div>
+
+                <!-- 3-Step Instructions -->
+                <div class="space-y-4">
+                    <!-- Step 1 -->
+                    <div class="flex gap-4 items-start p-4 rounded-xl" style="background:rgba(37,211,102,0.07);border:1px solid rgba(37,211,102,0.18)">
+                        <div class="step-circle shrink-0" style="background:#25d366;color:#fff">1</div>
+                        <div>
+                            <p class="font-bold text-sm mb-1">أضف رقمك أعلاه واضغط «حفظ»</p>
+                            <p class="text-xs text-gray-400">تأكد من إضافة رمز الدولة كاملاً (مثل +20 لمصر).</p>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="flex gap-4 items-start p-4 rounded-xl" style="background:rgba(37,211,102,0.07);border:1px solid rgba(37,211,102,0.18)">
+                        <div class="step-circle shrink-0" style="background:#128c7e;color:#fff">2</div>
+                        <div class="flex-1">
+                            <p class="font-bold text-sm mb-2">ابعت رسالة جوين لرقم Twilio Sandbox</p>
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="text-xs text-gray-400">الرقم:</span>
+                                <code class="text-emerald-400 font-bold" dir="ltr">+1 415 523 8886</code>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs text-gray-400">الرسالة:</span>
+                                <code id="join-code" class="bg-gray-800 px-3 py-1 rounded-lg text-emerald-300 text-xs" dir="ltr">join tayseer-demo</code>
+                                <button onclick="copyJoin()" class="text-xs text-emerald-400 hover:text-emerald-300 underline">نسخ</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="flex gap-4 items-start p-4 rounded-xl" style="background:rgba(37,211,102,0.07);border:1px solid rgba(37,211,102,0.18)">
+                        <div class="step-circle shrink-0" style="background:#075e54;color:#fff">3</div>
+                        <div>
+                            <p class="font-bold text-sm mb-1">ابعت كلمة «ربط» لنفس الرقم</p>
+                            <code class="bg-gray-800 px-3 py-1 rounded-lg text-emerald-300 text-xs" dir="ltr">ربط</code>
+                            <p class="text-xs text-gray-400 mt-1">
+                                هتوصلك رسالة تأكيد ربط حسابك — بعدها تقدر تسأل عن مزرعتك مباشرة!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action buttons -->
+                <div class="flex flex-wrap gap-3 mt-6">
+                    <button onclick="sendTestMsg()" class="btn-wa px-5 py-2 rounded-xl text-sm">
+                        📨 ابعت رسالة تجريبية
+                    </button>
+                    <button onclick="toggleOptin(true)" class="btn-sec px-5 py-2 rounded-xl text-sm">
+                        🔔 اشتراك في تحديثات 7 ص
+                    </button>
+                    <button onclick="toggleOptin(false)" class="btn-sec px-5 py-2 rounded-xl text-sm text-gray-500">
+                        🔕 إلغاء الاشتراك
+                    </button>
+                </div>
+
+                <!-- Result banner -->
+                <div id="result-banner" class="hidden mt-4 p-3 rounded-xl text-sm text-center font-bold"></div>
+            </div>
+
+            <!-- ════════════════════════ QUICK QUESTIONS ════════════════════════ -->
+            <div class="glass rounded-2xl p-6">
+                <h3 class="font-bold text-base mb-4">💬 أسئلة ممكن تبعتها على الواتساب</h3>
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                    <div class="p-3 rounded-xl text-center cursor-pointer hover:border-emerald-500 transition"
+                         style="background:rgba(37,211,102,0.07);border:1px solid rgba(37,211,102,0.2)"
+                         onclick="copyText('إيه حالة المحصول؟')">
+                        🌿 إيه حالة المحصول؟
+                    </div>
+                    <div class="p-3 rounded-xl text-center cursor-pointer hover:border-emerald-500 transition"
+                         style="background:rgba(37,211,102,0.07);border:1px solid rgba(37,211,102,0.2)"
+                         onclick="copyText('أروي النهاردة؟')">
+                        💧 أروي النهاردة؟
+                    </div>
+                    <div class="p-3 rounded-xl text-center cursor-pointer hover:border-emerald-500 transition"
+                         style="background:rgba(37,211,102,0.07);border:1px solid rgba(37,211,102,0.2)"
+                         onclick="copyText('كام ساعة أشغل الطلمبة؟')">
+                        ⏰ كام ساعة أشغل الطلمبة؟
+                    </div>
+                    <div class="p-3 rounded-xl text-center cursor-pointer hover:border-emerald-500 transition"
+                         style="background:rgba(37,211,102,0.07);border:1px solid rgba(37,211,102,0.2)"
+                         onclick="copyText('فيه عطل في البيفوت؟')">
+                        🔧 فيه عطل في البيفوت؟
+                    </div>
+                    <div class="p-3 rounded-xl text-center cursor-pointer hover:border-emerald-500 transition"
+                         style="background:rgba(37,211,102,0.07);border:1px solid rgba(37,211,102,0.2)"
+                         onclick="copyText('الجو عامل إيه؟')">
+                        🌤️ الجو عامل إيه؟
+                    </div>
+                    <div class="p-3 rounded-xl text-center cursor-pointer hover:border-emerald-500 transition"
+                         style="background:rgba(37,211,102,0.07);border:1px solid rgba(37,211,102,0.2)"
+                         onclick="copyText('كام الإنتاجية؟')">
+                        🌾 كام الإنتاجية؟
+                    </div>
+                </div>
+                <p class="text-xs text-gray-600 mt-3 text-center">اضغط على أي سؤال لنسخه تلقائياً 📋</p>
+            </div>
+
+            <!-- ════════════════════════ CONVERSATION HISTORY ════════════════════════ -->
+            <div class="glass rounded-2xl p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-bold text-base">📜 آخر محادثات الواتساب</h3>
+                    <button onclick="loadHistory()" class="btn-sec px-3 py-1.5 rounded-lg text-xs">🔄 تحديث</button>
+                </div>
+                <div id="history-container" class="space-y-4 text-sm max-h-96 overflow-y-auto">
+                    <p class="text-gray-500 text-center py-8">جاري تحميل المحادثات…</p>
+                </div>
+            </div>
+
+            <!-- ════════════════════════ SETUP GUIDE ════════════════════════ -->
+            <div class="glass rounded-2xl p-6">
+                <h3 class="font-bold text-base mb-4">⚙️ دليل الإعداد للمطورين (Ngrok + Twilio)</h3>
+                <div class="space-y-3 text-xs">
+                    <div class="p-3 rounded-lg" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+                        <p class="text-gray-400 mb-1">1. شغّل ngrok للحصول على رابط عام:</p>
+                        <code class="text-emerald-300 block" dir="ltr">ngrok http 5000</code>
+                    </div>
+                    <div class="p-3 rounded-lg" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+                        <p class="text-gray-400 mb-1">2. في Twilio Console → Messaging → WhatsApp Sandbox:</p>
+                        <code class="text-emerald-300 block" dir="ltr">When a message comes in → https://xxxx.ngrok.io/api/webhook/whatsapp</code>
+                    </div>
+                    <div class="p-3 rounded-lg" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+                        <p class="text-gray-400 mb-1">3. أضف متغيرات البيئة في ملف .env:</p>
+                        <code class="text-emerald-300 block" dir="ltr">TWILIO_ACCOUNT_SID=ACxxxxxxx<br>TWILIO_AUTH_TOKEN=xxxxxxx<br>TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886</code>
+                    </div>
+                    <div class="p-3 rounded-lg" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">
+                        <p class="text-gray-400 mb-1">4. تثبيت Twilio:</p>
+                        <code class="text-emerald-300 block" dir="ltr">uv add twilio python-dotenv</code>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+    // ── Check badge on load ─────────────────────────────────
+    async function checkStatus() {
+        try {
+            const res = await fetch('/api/whatsapp/history');
+            const data = await res.json();
+            const badge = document.getElementById('wa-badge');
+            if (data.success && data.conversations.length > 0) {
+                badge.className = 'text-xs px-3 py-1 rounded-full badge-ok';
+                badge.textContent = '✅ مربوط ونشط';
+            } else {
+                badge.className = 'text-xs px-3 py-1 rounded-full badge-pend';
+                badge.textContent = '⏳ في انتظار أول رسالة';
+            }
+        } catch {
+            document.getElementById('wa-badge').textContent = '❌ خطأ';
+        }
+    }
+
+    // ── Save phone ──────────────────────────────────────────
+    async function savePhone() {
+        const phone = document.getElementById('phone-input').value.trim();
+        if (!phone) return showBanner('من فضلك أدخل رقم الواتساب', false);
+        if (!phone.startsWith('+')) return showBanner('الرقم يجب يبدأ بـ + ورمز الدولة', false);
+
+        try {
+            const res  = await fetch('/api/user/update-phone', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({phone})
+            });
+            const data = await res.json();
+            showBanner(data.message || data.error, data.success);
+        } catch {
+            showBanner('خطأ في الاتصال بالسيرفر', false);
+        }
+    }
+
+    // ── Send test message ───────────────────────────────────
+    async function sendTestMsg() {
+        showBanner('جاري الإرسال…', true);
+        try {
+            const res  = await fetch('/api/whatsapp/send-test', {method: 'POST'});
+            const data = await res.json();
+            showBanner(data.success ? '✅ تم إرسال الرسالة التجريبية!' : ('❌ ' + (data.error || 'فشل')), data.success);
+        } catch {
+            showBanner('خطأ في الاتصال', false);
+        }
+    }
+
+    // ── Opt in/out ──────────────────────────────────────────
+    async function toggleOptin(val) {
+        try {
+            const res  = await fetch('/api/whatsapp/opt-in', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({opted_in: val})
+            });
+            const data = await res.json();
+            showBanner(data.message, data.success);
+        } catch {
+            showBanner('خطأ في الاتصال', false);
+        }
+    }
+
+    // ── Load history ────────────────────────────────────────
+    async function loadHistory() {
+        document.getElementById('history-container').innerHTML =
+            '<p class="text-gray-500 text-center py-4">جاري التحميل…</p>';
+        try {
+            const res  = await fetch('/api/whatsapp/history');
+            const data = await res.json();
+            renderHistory(data.conversations || []);
+        } catch {
+            document.getElementById('history-container').innerHTML =
+                '<p class="text-red-400 text-center py-4">خطأ في تحميل المحادثات</p>';
+        }
+    }
+
+    function renderHistory(conversations) {
+        const box = document.getElementById('history-container');
+        if (!conversations.length) {
+            box.innerHTML = '<p class="text-gray-500 text-center py-8">لا توجد محادثات بعد. ابعت رسالة على الواتساب!</p>';
+            return;
+        }
+        box.innerHTML = conversations.map(c => `
+            <div class="space-y-2">
+                <div class="flex justify-end">
+                    <div class="wa-bubble-in px-4 py-2 max-w-xs text-sm">${escHtml(c.user_msg)}</div>
+                </div>
+                <div class="flex justify-start">
+                    <div class="wa-bubble-out px-4 py-2 max-w-sm text-sm" style="white-space:pre-line">${escHtml(c.bot_msg)}</div>
+                </div>
+                <p class="text-xs text-gray-700 text-center">${c.timestamp || ''}</p>
+            </div>
+        `).join('<hr class="border-gray-800 my-2">');
+    }
+
+    // ── Helpers ─────────────────────────────────────────────
+    function showBanner(msg, ok) {
+        const b = document.getElementById('result-banner');
+        b.className = `mt-4 p-3 rounded-xl text-sm text-center font-bold ${ok ? 'bg-emerald-900/40 text-emerald-300 border border-emerald-700' : 'bg-red-900/40 text-red-300 border border-red-700'}`;
+        b.textContent = msg;
+        b.classList.remove('hidden');
+        setTimeout(() => b.classList.add('hidden'), 5000);
+    }
+
+    function copyJoin() {
+        navigator.clipboard.writeText(document.getElementById('join-code').textContent.trim())
+            .then(() => showBanner('✅ تم النسخ! الصقها في واتساب.', true));
+    }
+
+    function copyText(txt) {
+        navigator.clipboard.writeText(txt).then(() => showBanner(`✅ تم نسخ: "${txt}"`, true));
+    }
+
+    function escHtml(s) {
+        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── Init ────────────────────────────────────────────────
+    checkStatus();
+    loadHistory();
+    </script>
+</body>
+</html>

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tayseer-AgriSaT — إعدادات المزرعة</title>
+    <meta name="description" content="إعدادات المزرعة — تحديد المساحة المزروعة وبيانات منظومة الري" />
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap"
+        rel="stylesheet" />
+
+    <script>
+        window.USER_LAT = Number('{{ user.lat or 30.0 }}');
+        window.USER_LON = Number('{{ user.lon or 31.0 }}');
+        window.AREA_FEDDAN = Number('{{ user.area_feddan or 0 }}');
+        window.PUMP_FLOW = Number('{{ user.pump_flow_rate or 0 }}');
+    </script>
+</head>
+
+<body class="flex">
+
+    <!-- ── SIDEBAR ── -->
+    {% include 'sidebar.html' ignore missing %}
+
+    <!-- ── MAIN CONTENT ── -->
+    <main class="flex-1 overflow-y-auto p-5 md:p-8 space-y-6">
+
+        <!-- Mobile header -->
+        <div class="flex items-center justify-between md:hidden mb-2">
+            <div class="flex items-center gap-2">
+                <span class="text-3xl">🛰️</span>
+                <h1 class="text-xl font-extrabold text-white">إعدادات المزرعة</h1>
+            </div>
+            <a href="/dashboard" class="btn btn-green text-xs">🏡 لوحة التحكم</a>
+        </div>
+
+        <!-- Page Header -->
+        <div class="flex items-center gap-4 mb-2">
+            <div
+                class="w-14 h-14 rounded-full bg-gradient-to-br from-emerald-600 to-emerald-900 flex items-center justify-center text-2xl border-2 border-emerald-500/30">
+                ⚙️</div>
+            <div>
+                <h2 class="text-2xl font-extrabold text-white">إعدادات المزرعة</h2>
+                <p class="text-sm text-gray-400">تحديث المساحة المزروعة وبيانات منظومة الري</p>
+            </div>
+        </div>
+
+        <!-- Global Alert -->
+        <div id="global-alert" class="alert" role="alert"></div>
+
+        <!-- ═══ SECTION 1: Planted Area ═══ -->
+        <div class="settings-section">
+            <h3>📐 المساحة المزروعة (Planted Area)</h3>
+
+            <p class="text-sm text-green-400 mb-4">
+                💡 هذه المساحة تُستخدم في حسابات التبخر (ET) وكميات مياه الري — أدخلها بدقة.
+            </p>
+
+            <!-- Unit Switcher -->
+            <div class="flex items-center gap-2 mb-4">
+                <span class="text-sm text-gray-400 font-semibold">الوحدة:</span>
+                <button class="unit-btn active" id="unit-feddan" onclick="setUnit('feddan')">فدان</button>
+                <button class="unit-btn" id="unit-hectare" onclick="setUnit('hectare')">هكتار</button>
+                <button class="unit-btn" id="unit-qirat" onclick="setUnit('qirat')">قيراط</button>
+            </div>
+
+            <!-- Area Input Row -->
+            <div class="info-row">
+                <label class="info-label" for="input-area">
+                    📐 المساحة
+                    <span id="unit-label" class="text-green-400">(فدان)</span>
+                </label>
+                <div class="flex items-center gap-3">
+                    <input type="number" id="input-area" class="edit-input ltr" dir="ltr" step="0.01" min="0"
+                        value="{{ user.area_feddan or '' }}" placeholder="مثال: 50.5" style="width:160px;" />
+                    <span id="converted-display" class="text-xs text-gray-400"></span>
+                </div>
+            </div>
+
+            <div class="info-row">
+                <span class="info-label">📍 موقع المزرعة</span>
+                <input class="edit-input" id="input-farm-location" value="{{ user.farm_location or '' }}"
+                    placeholder="مثال: الفيوم، مصر" style="width:220px;" />
+            </div>
+
+            <div class="info-row">
+                <span class="info-label">🌿 نوع المحصول</span>
+                <input class="edit-input" id="input-crop-type" value="{{ user.crop_type or '' }}"
+                    placeholder="مثال: قمح، ذرة، بطاطس" style="width:220px;" />
+            </div>
+
+            <div id="area-alert" class="alert mt-3"></div>
+            <button onclick="saveAreaSettings()" class="btn btn-green w-full mt-4" id="btn-save-area">
+                💾 حفظ إعدادات المساحة
+            </button>
+        </div>
+
+        <!-- ═══ SECTION 2: Pump & Irrigation Data ═══ -->
+        <div class="settings-section">
+            <h3>💧 منظومة الري والضخ (Pump & Irrigation)</h3>
+
+            <p class="text-sm text-green-400 mb-4">
+                💡 هذه البيانات تُستخدم لحساب ساعات تشغيل المضخة وكمية المياه الداخلة للأرض.
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <div class="info-row">
+                    <span class="info-label">🔄 نوع جهاز الري</span>
+                    <select class="edit-input" id="input-irrigation-type" style="width:200px;">
+                        <option value="pivot" {{ 'selected' if user.irrigation_type=='pivot' }}>🔄 بيفوت محوري</option>
+                        <option value="drip" {{ 'selected' if user.irrigation_type=='drip' }}>💧 ري بالتنقيط</option>
+                        <option value="sprinkler" {{ 'selected' if user.irrigation_type=='sprinkler' }}>🌧️ ري بالرش
+                        </option>
+                        <option value="flood" {{ 'selected' if user.irrigation_type=='flood' }}>🌊 ري بالغمر</option>
+                    </select>
+                </div>
+
+                <div class="info-row">
+                    <label class="info-label" for="input-pump-flow">
+                        ⏱️ تصرّف المضخة (م³/ساعة)
+                        <span class="text-xs text-gray-500 block font-normal">Pump_Flow_Rate_m3_hr</span>
+                    </label>
+                    <input class="edit-input ltr" dir="ltr" type="number" step="0.5" min="0" id="input-pump-flow"
+                        value="{{ user.pump_flow_rate or '' }}" placeholder="مثال: 100" style="width:160px;" />
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">⚡ قدرة المضخة (kW)</span>
+                    <input class="edit-input ltr" dir="ltr" type="number" step="0.5" min="0" id="input-pump-power"
+                        value="{{ user.pump_power_kw or '' }}" placeholder="مثال: 22" style="width:160px;" />
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">⬆️ ارتفاع الضخ (متر)</span>
+                    <input class="edit-input ltr" dir="ltr" type="number" step="1" min="0" id="input-pump-head"
+                        value="{{ user.pump_head_m or '' }}" placeholder="مثال: 100" style="width:160px;" />
+                </div>
+
+            </div>
+
+            <div id="pump-alert" class="alert mt-3"></div>
+            <button onclick="savePumpSettings()" class="btn btn-green w-full mt-4" id="btn-save-pump">
+                💾 حفظ إعدادات الضخ والري
+            </button>
+        </div>
+
+        <!-- ═══ SECTION 3: Well / Turbine Data ═══ -->
+        <div class="settings-section">
+            <h3>🔩 بيانات البئر والتوربينة</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                <div class="info-row">
+                    <span class="info-label">⏱️ تصرف البئر (م³/ساعة)</span>
+                    <input class="edit-input ltr" dir="ltr" type="number" step="0.5" min="0" id="input-well-flow"
+                        value="{{ user.well_flow_rate or '' }}" placeholder="مثال: 60" style="width:160px;" />
+                </div>
+
+                <div class="info-row">
+                    <span class="info-label">⬇️ عمق البئر (متر)</span>
+                    <input class="edit-input ltr" dir="ltr" type="number" step="1" min="0" id="input-well-depth"
+                        value="{{ user.well_depth or '' }}" placeholder="مثال: 80" style="width:160px;" />
+                </div>
+
+            </div>
+
+            <div id="well-alert" class="alert mt-3"></div>
+            <button onclick="saveWellSettings()" class="btn btn-green w-full mt-4" id="btn-save-well">
+                💾 حفظ بيانات البئر
+            </button>
+        </div>
+
+        <div class="h-16"></div>
+    </main>
+
+    <script>
+        /* ── Unit Conversion ── */
+        // Conversion factors: 1 feddan = 4200 m² ; 1 hectare ≈ 2.38095 feddan ; 1 qirat = 1/24 feddan
+        const FEDDAN_PER_UNIT = { feddan: 1, hectare: 100 / 42, qirat: 1 / 24 };
+        let _unit = 'feddan';
+        let _rawFeddan = window.AREA_FEDDAN || 0;   // always stored in feddan
+
+        function setUnit(unit) {
+            _unit = unit;
+            // Update button states
+            ['feddan', 'hectare', 'qirat'].forEach(u => {
+                const btn = document.getElementById('unit-' + u);
+                btn.classList.toggle('active', u === unit);
+            });
+            // Update label
+            const labels = { feddan: '(فدان)', hectare: '(هكتار)', qirat: '(قيراط)' };
+            document.getElementById('unit-label').textContent = labels[unit];
+            // Convert displayed value
+            const areaInUnit = _rawFeddan / FEDDAN_PER_UNIT[unit];
+            const input = document.getElementById('input-area');
+            input.value = _rawFeddan > 0 ? parseFloat(areaInUnit.toFixed(4)) : '';
+            updateConvertedDisplay();
+        }
+
+        function updateConvertedDisplay() {
+            const val = parseFloat(document.getElementById('input-area').value) || 0;
+            const feddan = val * FEDDAN_PER_UNIT[_unit];
+            const display = document.getElementById('converted-display');
+            if (_unit !== 'feddan' && val > 0) {
+                display.textContent = `= ${feddan.toFixed(3)} فدان`;
+            } else {
+                display.textContent = '';
+            }
+        }
+
+        document.getElementById('input-area').addEventListener('input', function () {
+            _rawFeddan = (parseFloat(this.value) || 0) * FEDDAN_PER_UNIT[_unit];
+            updateConvertedDisplay();
+        });
+
+        /* ── Alert helpers ── */
+        function showAlert(id, msg, type = 'success') {
+            const el = document.getElementById(id);
+            el.className = `alert alert-${type} show`;
+            el.textContent = msg;
+            setTimeout(() => { el.className = 'alert'; el.textContent = ''; }, 5000);
+        }
+
+        function setBtnLoading(id, loading) {
+            const btn = document.getElementById(id);
+            btn.disabled = loading;
+            btn.textContent = loading ? '⏳ جاري الحفظ…' : btn.getAttribute('data-original-text');
+        }
+
+        // Store original button texts
+        document.addEventListener('DOMContentLoaded', () => {
+            ['btn-save-area', 'btn-save-pump', 'btn-save-well'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.setAttribute('data-original-text', btn.textContent);
+            });
+            if (window.AREA_FEDDAN > 0) updateConvertedDisplay();
+        });
+
+        /* ── API Call ── */
+        function postUpdate(payload) {
+            return fetch('/api/profile/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).then(r => r.json());
+        }
+
+        /* ── Save: Area / Farm Info ── */
+        async function saveAreaSettings() {
+            const areaVal = parseFloat(document.getElementById('input-area').value) || 0;
+            const feddan = areaVal * FEDDAN_PER_UNIT[_unit];
+
+            if (feddan <= 0) {
+                showAlert('area-alert', 'الرجاء إدخال مساحة صحيحة أكبر من صفر.', 'error');
+                return;
+            }
+
+            setBtnLoading('btn-save-area', true);
+            try {
+                const payload = { area_feddan: feddan };
+                const loc = document.getElementById('input-farm-location').value.trim();
+                const crop = document.getElementById('input-crop-type').value.trim();
+                if (loc) payload.farm_location = loc;
+                if (crop) payload.crop_type = crop;
+
+                const d = await postUpdate(payload);
+                showAlert('area-alert', d.success
+                    ? `✅ تم حفظ المساحة: ${feddan.toFixed(3)} فدان`
+                    : (d.message || 'حدث خطأ'), d.success ? 'success' : 'error');
+            } catch {
+                showAlert('area-alert', 'خطأ في الاتصال بالخادم.', 'error');
+            } finally {
+                setBtnLoading('btn-save-area', false);
+            }
+        }
+
+        /* ── Save: Pump & Irrigation ── */
+        async function savePumpSettings() {
+            const flow = parseFloat(document.getElementById('input-pump-flow').value) || 0;
+            const power = parseFloat(document.getElementById('input-pump-power').value) || 0;
+            const head = parseFloat(document.getElementById('input-pump-head').value) || 0;
+            const irr = document.getElementById('input-irrigation-type').value;
+
+            if (flow <= 0) {
+                showAlert('pump-alert', 'الرجاء إدخال تصرّف المضخة (م³/ساعة) بشكل صحيح.', 'error');
+                return;
+            }
+
+            setBtnLoading('btn-save-pump', true);
+            try {
+                const d = await postUpdate({
+                    pump_flow_rate_m3_per_hr: flow,
+                    pump_power_kw: power,
+                    pump_head_m: head,
+                    irrigation_type: irr,
+                });
+                showAlert('pump-alert', d.success
+                    ? `✅ تم حفظ بيانات الري: ${flow} م³/س`
+                    : (d.message || 'حدث خطأ'), d.success ? 'success' : 'error');
+            } catch {
+                showAlert('pump-alert', 'خطأ في الاتصال بالخادم.', 'error');
+            } finally {
+                setBtnLoading('btn-save-pump', false);
+            }
+        }
+
+        /* ── Save: Well ── */
+        async function saveWellSettings() {
+            const wellFlow = parseFloat(document.getElementById('input-well-flow').value) || 0;
+            const wellDepth = parseFloat(document.getElementById('input-well-depth').value) || 0;
+
+            setBtnLoading('btn-save-well', true);
+            try {
+                const d = await postUpdate({
+                    well_flow_rate: wellFlow,
+                    well_depth: wellDepth,
+                });
+                showAlert('well-alert', d.success
+                    ? '✅ تم حفظ بيانات البئر بنجاح'
+                    : (d.message || 'حدث خطأ'), d.success ? 'success' : 'error');
+            } catch {
+                showAlert('well-alert', 'خطأ في الاتصال بالخادم.', 'error');
+            } finally {
+                setBtnLoading('btn-save-well', false);
+            }
+        }
+    </script>
+
+</body>
+
+</html>
